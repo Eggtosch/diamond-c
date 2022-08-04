@@ -3,51 +3,59 @@
 #include <string.h>
 #include <dm_chunk.h>
 
-static void ident_array_init(dm_ident_array *variables) {
-	variables->size = 0;
-	variables->capacity = 0;
-	variables->ident_names = NULL;
-	variables->values = NULL;
+struct variable {
+	const char *name;
+	dm_value value;
+};
+
+static int value_compare(int size, void *e1, void *e2) {
+	(void) size;
+	return dm_value_equal(*(dm_value*) e1, *(dm_value*) e2) ? 0 : 1;
 }
 
-static void ident_array_free(dm_ident_array *variables) {
-	free(variables->ident_names);
-	free(variables->values);
-	*variables = (dm_ident_array){0, 0, NULL, NULL};
+static int byte_compare(int size, void *e1, void *e2) {
+	(void) size;
+	return *(uint8_t*) e1 == *(uint8_t*) e2;
+}
+
+static int variable_compare(int size, void *e1, void *e2) {
+	(void) size;
+	struct variable *v1 = (struct variable*) e1;
+	struct variable *v2 = (struct variable*) e2;
+	return strcmp(v1->name, v2->name) == 0;
 }
 
 void dm_chunk_init(dm_chunk *chunk) {
-	*chunk = (dm_chunk){0, 0, NULL, 0, {}, {}};
-	dm_value_array_init(&chunk->constants);
-	ident_array_init(&chunk->variables);
+	*chunk = (dm_chunk){{}, 0, {}, {}};
+	dm_array_new(&chunk->code, sizeof(uint8_t), byte_compare);
+	dm_array_new(&chunk->constants, sizeof(dm_value), value_compare);
+	dm_array_new(&chunk->variables, sizeof(struct variable), variable_compare);
 }
 
 void dm_chunk_free(dm_chunk *chunk) {
-	free(chunk->code);
-	dm_value_array_free(&chunk->constants);
-	ident_array_free(&chunk->variables);
-	*chunk = (dm_chunk){0, 0, NULL, 0, {}, {}};
+	dm_array_free(&chunk->code);
+	dm_array_free(&chunk->constants);
+	
+	int n_variables = dm_array_size(&chunk->variables);
+	for (int i = 0; i < n_variables; i++) {
+		struct variable *v = (struct variable*) dm_array_get(&chunk->variables, i);
+		free((void*) v->name);
+		v->name = NULL;
+	}
+	dm_array_free(&chunk->variables);
+	*chunk = (dm_chunk){{}, 0, {}, {}};
 }
 
 void dm_chunk_reset_code(dm_chunk *chunk) {
-	memset(chunk->code, 0, chunk->capacity);
-	chunk->size = 0;
+	dm_array_clear(&chunk->code);
 }
 
 int dm_chunk_current_address(dm_chunk *chunk) {
-	return chunk->size;
+	return dm_array_size(&chunk->code);
 }
 
 static void emit_byte(dm_chunk *chunk, uint8_t byte) {
-	if (chunk->size >= chunk->capacity) {
-		if (chunk->capacity < 16) {
-			chunk->capacity = 16;
-		} else {
-			chunk->capacity *= 2;
-		}
-		chunk->code = realloc(chunk->code, chunk->capacity * sizeof(uint8_t));
-	}
-	chunk->code[chunk->size++] = byte;
+	dm_array_push(&chunk->code, (void*) &byte);
 }
 
 void dm_chunk_emit(dm_chunk *chunk, dm_opcode opcode) {
@@ -55,7 +63,10 @@ void dm_chunk_emit(dm_chunk *chunk, dm_opcode opcode) {
 }
 
 void dm_chunk_emit_constant(dm_chunk *chunk, dm_value value) {
-	int index = dm_value_array_add(&chunk->constants, value);
+	int index = dm_array_index(&chunk->constants, (void*) &value);
+	if (index == -1) {
+		index = dm_array_push(&chunk->constants, (void*) &value);
+	}
 	dm_chunk_emit_arg16(chunk, DM_OP_CONSTANT, index);
 }
 
@@ -86,46 +97,36 @@ int dm_chunk_emit_jump(dm_chunk *chunk, dm_opcode opcode, int dest) {
 
 	uint16_t addr = (uint16_t) dest;
 	emit_byte(chunk, (uint8_t) opcode);
-	int addr_location = chunk->size;
+	int addr_location = dm_chunk_current_address(chunk);
 	emit_byte(chunk, (uint8_t) (addr >> 8));
 	emit_byte(chunk, (uint8_t) (addr & 0xff));
 	return addr_location;
 }
 
 void dm_chunk_patch_jump(dm_chunk *chunk, int addr_location) {
-	if (chunk->size >= 1 << 16) {
+	if (dm_chunk_current_address(chunk) >= 1 << 16) {
 		return;
 	}
 
-	uint16_t addr = chunk->size;
-	chunk->code[addr_location] = (uint8_t) (addr >> 8);
-	chunk->code[addr_location + 1] = (uint8_t) (addr & 0xff);
+	uint16_t addr = dm_chunk_current_address(chunk);
+	*(uint8_t*) dm_array_get(&chunk->code, addr_location) = (uint8_t) (addr >> 8);
+	*(uint8_t*) dm_array_get(&chunk->code, addr_location+1) = (uint8_t) (addr & 0xff);
 }
 
 int dm_chunk_add_var(dm_chunk *chunk, const char *name, int size) {
-	dm_ident_array *vars = &chunk->variables;
-	for (int i = 0; i < vars->size; i++) {
-		if (strncmp(vars->ident_names[i], name, size) == 0) {
+	int n_variables = dm_array_size(&chunk->variables);
+	for (int i = 0; i < n_variables; i++) {
+		const char *try_name = ((struct variable*) dm_array_get(&chunk->variables, i))->name;
+		if (strncmp(try_name, name, size) == 0) {
 			return i;
 		}
 	}
 
-	if (vars->size >= vars->capacity) {
-		if (vars->capacity < 16) {
-			vars->capacity = 16;
-		} else {
-			vars->capacity *= 2;
-		}
-		vars->ident_names = realloc(vars->ident_names, vars->capacity * sizeof(char*));
-		vars->values = realloc(vars->values, vars->capacity * sizeof(dm_value));
-	}
-	int index = vars->size++;
-	char *new_var = malloc(size + 1);
-	memcpy(new_var, name, size);
-	new_var[size] = '\0';
-	vars->ident_names[index] = new_var;
-	vars->values[index] = dm_value_nil();
-	return index;
+	char *new_name = malloc(size + 1);
+	memcpy(new_name, name, size);
+	new_name[size] = '\0';
+	struct variable new_var = {new_name, dm_value_nil()};
+	return dm_array_push(&chunk->variables, (void*) &new_var);
 }
 
 
@@ -174,22 +175,26 @@ static int decompile_op(uint8_t *code) {
 }
 
 void dm_chunk_decompile(dm_chunk *chunk) {
-	for (int i = 0; i < chunk->size;) {
+	for (int i = 0; i < dm_array_size(&chunk->code);) {
 		printf("%d: ", i);
-		i += decompile_op(chunk->code + i);
+		i += decompile_op((uint8_t*) dm_array_get(&chunk->code, i));
 	}
 
 	printf("Constants:\n");
-	for (int i = 0; i < chunk->constants.size; i++) {
+	int n_consts = dm_array_size(&chunk->constants);
+	for (int i = 0; i < n_consts; i++) {
 		printf("%d: ", i);
-		dm_value_inspect(chunk->constants.values[i]);
+		dm_value_inspect(*(dm_value*) dm_array_get(&chunk->constants, i));
 		printf("\n");
 	}
 
 	printf("Variables:\n");
-	for (int i = 0; i < chunk->variables.size; i++) {
-		printf("%d: %s -> ", i, chunk->variables.ident_names[i]);
-		dm_value_inspect(chunk->variables.values[i]);
+	int n_variables = dm_array_size(&chunk->variables);
+	for (int i = 0; i < n_variables; i++) {
+		struct variable *var = (struct variable*) dm_array_get(&chunk->variables, i);
+		printf("%d: %s -> ", i, var->name);
+		dm_value_inspect(var->value);
 		printf("\n");
 	}
 }
+

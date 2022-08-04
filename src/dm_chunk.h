@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <dm_value.h>
+#include <dm_array.h>
 
 typedef enum {
 	DM_OP_VARSET,
@@ -44,19 +45,10 @@ typedef enum {
 } dm_opcode;
 
 typedef struct {
-	int size;
-	int capacity;
-	const char **ident_names;
-	dm_value *values;
-} dm_ident_array;
-
-typedef struct {
-	int size;
-	int capacity;
-	uint8_t *code;
+	dm_array code;
 	uint64_t ip;
-	dm_value_array constants;
-	dm_ident_array variables;
+	dm_array constants;
+	dm_array variables;
 } dm_chunk;
 
 void dm_chunk_init(dm_chunk *chunk);
@@ -75,3 +67,4 @@ void dm_chunk_patch_jump(dm_chunk *chunk, int addr_location);
 int  dm_chunk_add_var(dm_chunk *chunk, const char *name, int size);
 
 void dm_chunk_decompile(dm_chunk *chunk);
+

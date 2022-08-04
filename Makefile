@@ -1,14 +1,14 @@
 CC     := gcc
 RM     := rm -f
 
-CFLAGS  := -Wall -Wextra -Isrc/ -pipe -ggdb -O2 -flto -march=native -MMD -MP
+CFLAGS  := -Wall -Wextra -Isrc/ -pipe -ggdb -flto -O2 -march=native -MMD -MP
 LDFLAGS := -pipe -flto
 LIBS    := -lreadline
 
 BINARY       := diamond
 OBJDIR       := src/.bin
 CFILES       := src/dm_main.c src/dm_state.c src/dm_vm.c src/dm_compiler.c \
-				src/dm_chunk.c src/dm_value.c
+				src/dm_chunk.c src/dm_value.c src/dm_array.c
 OBJS         := $(CFILES:%.c=$(OBJDIR)/%.o)
 HEADER_DEPS  := $(CFILES:%.c=$(OBJDIR)/%.d)
 

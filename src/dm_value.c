@@ -70,32 +70,3 @@ void dm_value_inspect(dm_value v) {
 	}
 }
 
-
-void dm_value_array_init(dm_value_array *array) {
-	*array = (dm_value_array){0, 0, NULL};
-}
-
-void dm_value_array_free(dm_value_array *array) {
-	free(array->values);
-	*array = (dm_value_array){0, 0, NULL};
-}
-
-int dm_value_array_add(dm_value_array *array, dm_value v) {
-	for (int i = 0; i < array->size; i++) {
-		if (dm_value_equal(v, array->values[i])) {
-			return i;
-		}
-	}
-
-	if (array->size >= array->capacity) {
-		if (array->capacity < 16) {
-			array->capacity = 16;
-		} else {
-			array->capacity *= 2;
-		}
-		array->values = realloc(array->values, array->capacity * sizeof(dm_value));
-	}
-	int index = array->size++;
-	array->values[index] = v;
-	return index;
-}

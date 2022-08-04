@@ -48,12 +48,3 @@ bool dm_value_is(dm_value v, dm_type t);
 bool dm_value_equal(dm_value v1, dm_value v2);
 void dm_value_inspect(dm_value v);
 
-typedef struct {
-	int size;
-	int capacity;
-	dm_value *values;
-} dm_value_array;
-
-void dm_value_array_init(dm_value_array *array);
-void dm_value_array_free(dm_value_array *array);
-int  dm_value_array_add(dm_value_array *array, dm_value v);

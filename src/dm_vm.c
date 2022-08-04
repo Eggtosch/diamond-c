@@ -1,64 +1,55 @@
 #include <stdlib.h>
+#include <stdio.h>
 
 #include <dm_vm.h>
 #include <dm_compiler.h>
 #include <dm_value.h>
 #include <dm_chunk.h>
-#include <stdio.h>
+#include <dm_array.h>
 
-typedef struct {
-	int size;
-	int capacity;
-	dm_value *values;
-} dm_stack;
-
-static void stack_init(dm_stack *stack) {
-	stack->size = 0;
-	stack->capacity = 0;
-	stack->values = NULL;
+static int stack_value_compare(int size, void *e1, void *e2) {
+	(void) size;
+	return dm_value_equal(*(dm_value*) e1, *(dm_value*) e2) ? 0 : 1;
 }
 
-static void stack_free(dm_stack *stack) {
-	free(stack->values);
-	stack_init(stack);
+static void stack_init(dm_array *stack) {
+	dm_array_new(stack, sizeof(dm_value), stack_value_compare);
 }
 
-static void stack_push(dm_stack *stack, dm_value val) {
-	if (stack->size >= stack->capacity) {
-		if (stack->capacity < 16) {
-			stack->capacity = 16;
-		} else {
-			stack->capacity *= 2;
-		}
-		stack->values = realloc(stack->values, stack->capacity * sizeof(dm_value));
+static void stack_free(dm_array *stack) {
+	dm_array_free(stack);
+}
+
+static void stack_push(dm_array *stack, dm_value val) {
+	dm_array_push(stack, (void*) &val);
+}
+
+static dm_value stack_pop(dm_array *stack) {
+	dm_value result;
+	if (dm_array_pop(stack, (void*) &result)) {
+		return result;
 	}
-	stack->values[stack->size++] = val;
+	return dm_value_nil();
 }
 
-static dm_value stack_pop(dm_stack *stack) {
-	if (stack->size == 0) {
-		fprintf(stderr, "Error, stack to pop from is empty!\n");
+static dm_value stack_peek(dm_array *stack) {
+	int size = dm_array_size(stack);
+	if (size <= 0) {
 		return dm_value_nil();
 	}
-	return stack->values[stack->size-- - 1];
-}
-
-static dm_value stack_peek(dm_stack *stack) {
-	if (stack->size == 0) {
-		fprintf(stderr, "Error, stack to peek from is empty!\n");
-		return dm_value_nil();
-	}
-	return stack->values[stack->size - 1];
+	return *(dm_value*) dm_array_get(stack, size - 1);
 }
 
 static uint8_t read8(dm_chunk *chunk) {
-	uint8_t b = chunk->code[chunk->ip];
+	uint8_t b = *(uint8_t*) dm_array_get(&chunk->code, chunk->ip);
 	chunk->ip++;
 	return b;
 }
 
 static uint16_t read16(dm_chunk *chunk) {
-	uint16_t s = chunk->code[chunk->ip] + chunk->code[chunk->ip + 1];
+	uint16_t s = *(uint8_t*) dm_array_get(&chunk->code, chunk->ip);
+	s <<= 8;
+	s += *(uint8_t*) dm_array_get(&chunk->code, chunk->ip + 1);
 	chunk->ip += 2;
 	return s;
 }
@@ -67,7 +58,7 @@ static bool is_falsey(dm_value val) {
 	return dm_value_is(val, DM_TYPE_NIL) || (dm_value_is(val, DM_TYPE_BOOL) && val.bool_val == false);
 }
 
-static int exec_func(dm_value f, dm_stack *stack, int nargs) {
+static int exec_func(dm_value f, dm_array *stack, int nargs) {
 	if (!dm_value_is(f, DM_TYPE_FUNCTION) || nargs != 0) {
 		return DM_VM_RUNTIME_ERROR;
 	}
@@ -96,7 +87,7 @@ static int exec_func(dm_value f, dm_stack *stack, int nargs) {
 			}
 			case DM_OP_CONSTANT:            {
 				uint16_t index = read16(chunk);
-				stack_push(stack, chunk->constants.values[index]);
+				stack_push(stack, *(dm_value*) dm_array_get(&chunk->constants, index));
 				break;
 			}
 			case DM_OP_ARRAYLIT:            {
@@ -284,7 +275,7 @@ int dm_vm_exec(dm_state *dm, char *prog) {
 
 	dm_chunk_decompile((dm_chunk*) dm->main.func_val->chunk);
 
-	dm_stack stack;
+	dm_array stack;
 	stack_init(&stack);
 
 	int status = exec_func(dm->main, &stack, 0);
@@ -293,3 +284,4 @@ int dm_vm_exec(dm_state *dm, char *prog) {
 
 	return status;
 }
+
