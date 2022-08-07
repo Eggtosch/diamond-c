@@ -58,9 +58,9 @@ static bool is_falsey(dm_value val) {
 	return dm_value_is(val, DM_TYPE_NIL) || (dm_value_is(val, DM_TYPE_BOOL) && val.bool_val == false);
 }
 
-static int exec_func(dm_value f, dm_array *stack, int nargs) {
+static dm_value exec_func(dm_value f, dm_array *stack, int nargs) {
 	if (!dm_value_is(f, DM_TYPE_FUNCTION) || nargs != 0) {
-		return DM_VM_RUNTIME_ERROR;
+		return dm_value_nil();
 	}
 
 	dm_chunk *chunk = (dm_chunk*) f.func_val->chunk;
@@ -119,14 +119,14 @@ static int exec_func(dm_value f, dm_array *stack, int nargs) {
 				if (dm_value_is(val, DM_TYPE_INT)) {
 					stack_push(stack, dm_value_int(-val.int_val));
 				} else {
-					return DM_VM_RUNTIME_ERROR;
+					return dm_value_nil();
 				}
 				break;
 			}
 			case DM_OP_NOT:                 {
 				dm_value val = stack_pop(stack);
 				if (!dm_value_is(val, DM_TYPE_BOOL)) {
-					return DM_VM_RUNTIME_ERROR;
+					return dm_value_nil();
 				}
 				stack_push(stack, dm_value_bool(!val.bool_val));
 				break;
@@ -137,7 +137,7 @@ static int exec_func(dm_value f, dm_array *stack, int nargs) {
 				if (dm_value_is(val1, DM_TYPE_INT) && dm_value_is(val2, DM_TYPE_INT)) {
 					stack_push(stack, dm_value_int(val1.int_val + val2.int_val));
 				} else {
-					return DM_VM_RUNTIME_ERROR;
+					return dm_value_nil();
 				}
 				break;
 			}
@@ -147,7 +147,7 @@ static int exec_func(dm_value f, dm_array *stack, int nargs) {
 				if (dm_value_is(val1, DM_TYPE_INT) && dm_value_is(val2, DM_TYPE_INT)) {
 					stack_push(stack, dm_value_int(val1.int_val - val2.int_val));
 				} else {
-					return DM_VM_RUNTIME_ERROR;
+					return dm_value_nil();
 				}
 				break;
 			}
@@ -157,7 +157,7 @@ static int exec_func(dm_value f, dm_array *stack, int nargs) {
 				if (dm_value_is(val1, DM_TYPE_INT) && dm_value_is(val2, DM_TYPE_INT)) {
 					stack_push(stack, dm_value_int(val1.int_val * val2.int_val));
 				} else {
-					return DM_VM_RUNTIME_ERROR;
+					return dm_value_nil();
 				}
 				break;
 			}
@@ -167,7 +167,7 @@ static int exec_func(dm_value f, dm_array *stack, int nargs) {
 				if (dm_value_is(val1, DM_TYPE_INT) && dm_value_is(val2, DM_TYPE_INT)) {
 					stack_push(stack, dm_value_int(val1.int_val / val2.int_val));
 				} else {
-					return DM_VM_RUNTIME_ERROR;
+					return dm_value_nil();
 				}
 				break;
 			}
@@ -189,7 +189,7 @@ static int exec_func(dm_value f, dm_array *stack, int nargs) {
 				if (dm_value_is(val1, DM_TYPE_INT) && dm_value_is(val2, DM_TYPE_INT)) {
 					stack_push(stack, dm_value_bool(val1.int_val < val2.int_val));
 				} else {
-					return DM_VM_RUNTIME_ERROR;
+					return dm_value_nil();
 				}
 				break;
 			}
@@ -199,7 +199,7 @@ static int exec_func(dm_value f, dm_array *stack, int nargs) {
 				if (dm_value_is(val1, DM_TYPE_INT) && dm_value_is(val2, DM_TYPE_INT)) {
 					stack_push(stack, dm_value_bool(val1.int_val <= val2.int_val));
 				} else {
-					return DM_VM_RUNTIME_ERROR;
+					return dm_value_nil();
 				}
 				break;
 			}
@@ -209,7 +209,7 @@ static int exec_func(dm_value f, dm_array *stack, int nargs) {
 				if (dm_value_is(val1, DM_TYPE_INT) && dm_value_is(val2, DM_TYPE_INT)) {
 					stack_push(stack, dm_value_bool(val1.int_val > val2.int_val));
 				} else {
-					return DM_VM_RUNTIME_ERROR;
+					return dm_value_nil();
 				}
 				break;
 			}
@@ -219,7 +219,7 @@ static int exec_func(dm_value f, dm_array *stack, int nargs) {
 				if (dm_value_is(val1, DM_TYPE_INT) && dm_value_is(val2, DM_TYPE_INT)) {
 					stack_push(stack, dm_value_bool(val1.int_val >= val2.int_val));
 				} else {
-					return DM_VM_RUNTIME_ERROR;
+					return dm_value_nil();
 				}
 				break;
 			}
@@ -257,20 +257,18 @@ static int exec_func(dm_value f, dm_array *stack, int nargs) {
 				break;
 			}
 			case DM_OP_RETURN:              {
-				dm_value_inspect(stack_peek(stack));
-				printf("\n");
-				return DM_VM_OK;
+				return stack_pop(stack);
 				break;
 			}
-			default: return DM_VM_RUNTIME_ERROR;
+			default: return dm_value_nil();
 		}
 	}
-	return DM_VM_RUNTIME_ERROR;
+	return dm_value_nil();
 }
 
-int dm_vm_exec(dm_state *dm, char *prog) {
+dm_value dm_vm_exec(dm_state *dm, char *prog) {
 	if (dm_compile(dm, prog) != 0) {
-		return DM_VM_COMPILE_ERROR;
+		return dm_value_nil();
 	}
 
 	dm_chunk_decompile((dm_chunk*) dm->main.func_val->chunk);
@@ -278,10 +276,10 @@ int dm_vm_exec(dm_state *dm, char *prog) {
 	dm_array stack;
 	stack_init(&stack);
 
-	int status = exec_func(dm->main, &stack, 0);
+	dm_value v = exec_func(dm->main, &stack, 0);
 
 	stack_free(&stack);
 
-	return status;
+	return v;
 }
 

@@ -32,6 +32,13 @@ static char *read_file(const char *path) {
 	return buffer;
 }
 
+static void run(dm_state *dm, char *prog) {
+	dm_value ret = dm_vm_exec(dm, prog);
+	printf("Result: ");
+	dm_value_inspect(ret);
+	printf("\n");
+}
+
 static void repl(dm_state *dm) {
 	char *line;
 	int linenum = 1;
@@ -44,23 +51,15 @@ static void repl(dm_state *dm) {
 			break;
 		}
 		add_history(line);
-		int status = dm_vm_exec(dm, line);
-		if (status == DM_VM_RUNTIME_ERROR) {
-			fprintf(stderr, "Runtime Error!\n");
-		}
+		run(dm, line);
 		free(line);
 	}
 }
 
 static void run_file(dm_state *dm, char *path) {
 	char *source = read_file(path);
-	int result = dm_vm_exec(dm, source);
+	run(dm, source);
 	free(source);
-
-	if (result == DM_VM_COMPILE_ERROR)
-		exit(1);
-	if (result == DM_VM_RUNTIME_ERROR)
-		exit(1);
 }
 
 int main(int argc, char **argv) {
