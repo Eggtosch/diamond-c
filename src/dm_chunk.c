@@ -129,6 +129,21 @@ int dm_chunk_add_var(dm_chunk *chunk, const char *name, int size) {
 	return dm_array_push(&chunk->variables, (void*) &new_var);
 }
 
+void dm_chunk_set_var(dm_chunk *chunk, int index, dm_value v) {
+	struct variable *var = dm_array_get(&chunk->variables, index);
+	if (var != NULL) {
+		var->value = v;
+	}
+}
+
+dm_value dm_chunk_get_var(dm_chunk *chunk, int index) {
+	struct variable *var = dm_array_get(&chunk->variables, index);
+	if (var != NULL) {
+		return var->value;
+	}
+	return dm_value_nil();
+}
+
 
 static int decompile_op(uint8_t *code) {
 	uint8_t opcode = code[0];

@@ -71,9 +71,15 @@ static dm_value exec_func(dm_value f, dm_array *stack, int nargs) {
 		
 		switch (opcode) {
 			case DM_OP_VARSET:              {
+				int index = read16(chunk);
+				dm_value v = stack_peek(stack);
+				dm_chunk_set_var(chunk, index, v);
 				break;
 			}
 			case DM_OP_VARGET:              {
+				int index = read16(chunk);
+				dm_value v = dm_chunk_get_var(chunk, index);
+				stack_push(stack, v);
 				break;
 			}
 			case DM_OP_FIELDSET:            {
@@ -271,12 +277,12 @@ dm_value dm_vm_exec(dm_state *dm, char *prog) {
 		return dm_value_nil();
 	}
 
-	dm_chunk_decompile((dm_chunk*) dm->main.func_val->chunk);
-
 	dm_array stack;
 	stack_init(&stack);
 
 	dm_value v = exec_func(dm->main, &stack, 0);
+
+	dm_chunk_decompile((dm_chunk*) dm->main.func_val->chunk);
 
 	stack_free(&stack);
 
