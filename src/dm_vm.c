@@ -96,6 +96,11 @@ static dm_value exec_func(dm_value f, dm_array *stack, int nargs) {
 				stack_push(stack, *(dm_value*) dm_array_get(&chunk->constants, index));
 				break;
 			}
+			case DM_OP_CONSTANT_SMALLINT:	{
+				uint16_t val = read16(chunk);
+				stack_push(stack, dm_value_int(val));
+				break;
+			}
 			case DM_OP_ARRAYLIT:            {
 				break;
 			}

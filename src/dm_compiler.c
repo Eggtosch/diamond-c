@@ -386,7 +386,11 @@ static void pstring(dm_parser *parser) {
 
 static void pinteger(dm_parser *parser) {
 	long value = strtol(parser->previous.begin, NULL, 10);
-	dm_chunk_emit_constant(&parser->chunk, dm_value_int(value));
+	if (value <= UINT16_MAX) {
+		dm_chunk_emit_arg16(&parser->chunk, DM_OP_CONSTANT_SMALLINT, value);
+	} else {
+		dm_chunk_emit_constant(&parser->chunk, dm_value_int(value));
+	}
 }
 
 static void pfloating(dm_parser *parser) {

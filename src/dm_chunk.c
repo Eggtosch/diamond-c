@@ -155,6 +155,7 @@ static int decompile_op(uint8_t *code) {
 		case DM_OP_FIELDGET_PUSHPARENT:	printf("FIELDGET_PUSHPARENT\n"); return 1;
 
 		case DM_OP_CONSTANT:			printf("CONSTANT %d\n", code[1] << 8 | code[2]); return 3;
+		case DM_OP_CONSTANT_SMALLINT:	printf("CONSTANT SMALL INT <%d>\n", code[1] << 8 | code[2]); return 3;
 
 		case DM_OP_ARRAYLIT:			printf("ARRAYLIT\n"); return 1;
 		case DM_OP_TABLELIT:			printf("TABLELIT\n"); return 1;
