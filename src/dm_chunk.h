@@ -5,44 +5,44 @@
 #include <dm_array.h>
 
 typedef enum {
-	DM_OP_VARSET,
-	DM_OP_VARGET,
-	DM_OP_FIELDSET,
-	DM_OP_FIELDGET,
-	DM_OP_FIELDGET_PUSHPARENT,
+	DM_OP_VARSET,				// op8 index16 | [value] -> []
+	DM_OP_VARGET,				// op8 index16 | [] -> []
+	DM_OP_FIELDSET,				// op8 | [table, field, value] -> [value]
+	DM_OP_FIELDGET,				// op8 | [table, field] -> [value]
+	DM_OP_FIELDGET_PUSHPARENT,	// op8 | [table, field] -> [table, value]
 
-	DM_OP_CONSTANT,
-	DM_OP_CONSTANT_SMALLINT,
+	DM_OP_CONSTANT,				// op8 index16 | [] -> [value]
+	DM_OP_CONSTANT_SMALLINT,	// op8 imm16 | [] -> [value]
 
-	DM_OP_ARRAYLIT,
-	DM_OP_TABLELIT,
-	DM_OP_TRUE,
-	DM_OP_FALSE,
-	DM_OP_NIL,
+	DM_OP_ARRAYLIT,				// op8 imm16 | [v1, ..., vn] -> [value]
+	DM_OP_TABLELIT,				// op8 imm16 | [k1, v1, ..., kn, vn] -> [value]
+	DM_OP_TRUE,					// op8 | [] -> [value]
+	DM_OP_FALSE,				// op8 | [] -> [value]
+	DM_OP_NIL,					// op8 | [] -> [value]
 
 	DM_OP_CALL,
 	DM_OP_CALL_WITHPARENT,
 
-	DM_OP_NEGATE,
-	DM_OP_NOT,
-	DM_OP_PLUS,
-	DM_OP_MINUS,
-	DM_OP_MUL,
-	DM_OP_DIV,
-	DM_OP_NOTEQUAL,
-	DM_OP_EQUAL,
-	DM_OP_LESS,
-	DM_OP_LESSEQUAL,
-	DM_OP_GREATER,
-	DM_OP_GREATEREQUAL,
+	DM_OP_NEGATE,				// op8 | [value] -> [value]
+	DM_OP_NOT,					// op8 | [value] -> [value]
+	DM_OP_PLUS,					// op8 | [value1, value2] -> [value]
+	DM_OP_MINUS,				// op8 | [value1, value2] -> [value]
+	DM_OP_MUL,					// op8 | [value1, value2] -> [value]
+	DM_OP_DIV,					// op8 | [value1, value2] -> [value]
+	DM_OP_NOTEQUAL,				// op8 | [value1, value2] -> [value]
+	DM_OP_EQUAL,				// op8 | [value1, value2] -> [value]
+	DM_OP_LESS,					// op8 | [value1, value2] -> [value]
+	DM_OP_LESSEQUAL,			// op8 | [value1, value2] -> [value]
+	DM_OP_GREATER,				// op8 | [value1, value2] -> [value]
+	DM_OP_GREATEREQUAL,			// op8 | [value1, value2] -> [value]
 
-	DM_OP_JUMP_IF_TRUE,
-	DM_OP_JUMP_IF_FALSE,
-	DM_OP_JUMP_IF_FALSE_POP,
-	DM_OP_JUMP,
+	DM_OP_JUMP_IF_TRUE,			// op8 addr16 | [cond] -> []
+	DM_OP_JUMP_IF_FALSE,		// op8 addr16 | [cond] -> []
+	DM_OP_JUMP_IF_FALSE_POP,	// op8 addr16 | [cond] -> []
+	DM_OP_JUMP,					// op8 addr16 | [] -> []
 
-	DM_OP_POP,
-	DM_OP_RETURN
+	DM_OP_POP,					// op8 | [value] -> []
+	DM_OP_RETURN				// op8 | [value] -> []
 } dm_opcode;
 
 typedef struct {

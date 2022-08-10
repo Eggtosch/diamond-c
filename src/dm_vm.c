@@ -284,10 +284,11 @@ dm_value dm_vm_exec(dm_state *dm, char *prog) {
 
 	dm_array stack;
 	stack_init(&stack);
-
+	
+	dm_chunk_decompile((dm_chunk*) dm->main.func_val->chunk);
 	dm_value v = exec_func(dm->main, &stack, 0);
 
-	dm_chunk_decompile((dm_chunk*) dm->main.func_val->chunk);
+	printf("stack size: %d\n", stack.size);
 
 	stack_free(&stack);
 

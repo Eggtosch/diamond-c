@@ -117,7 +117,7 @@ int dm_chunk_add_var(dm_chunk *chunk, const char *name, int size) {
 	int n_variables = dm_array_size(&chunk->variables);
 	for (int i = 0; i < n_variables; i++) {
 		const char *try_name = ((struct variable*) dm_array_get(&chunk->variables, i))->name;
-		if (strncmp(try_name, name, size) == 0) {
+		if (strlen(try_name) == (size_t) size && strncmp(try_name, name, size) == 0) {
 			return i;
 		}
 	}
