@@ -148,14 +148,14 @@ dm_value dm_chunk_get_var(dm_chunk *chunk, int index) {
 static int decompile_op(uint8_t *code) {
 	uint8_t opcode = code[0];
 	switch (opcode) {
-		case DM_OP_VARSET:				printf("VAR_SET %d\n", code[1] << 8 | code[2]); return 3;
-		case DM_OP_VARGET:				printf("VAR_GET %d\n", code[1] << 8 | code[2]); return 3;
-		case DM_OP_FIELDSET:			printf("FIELD_SET\n"); return 1;
-		case DM_OP_FIELDGET:			printf("FIELD_GET\n"); return 1;
+		case DM_OP_VARSET:				printf("VARSET %d\n", code[1] << 8 | code[2]); return 3;
+		case DM_OP_VARGET:				printf("VARGET %d\n", code[1] << 8 | code[2]); return 3;
+		case DM_OP_FIELDSET:			printf("FIELDSET\n"); return 1;
+		case DM_OP_FIELDGET:			printf("FIELDGET\n"); return 1;
 		case DM_OP_FIELDGET_PUSHPARENT:	printf("FIELDGET_PUSHPARENT\n"); return 1;
 
 		case DM_OP_CONSTANT:			printf("CONSTANT %d\n", code[1] << 8 | code[2]); return 3;
-		case DM_OP_CONSTANT_SMALLINT:	printf("CONSTANT SMALL INT <%d>\n", code[1] << 8 | code[2]); return 3;
+		case DM_OP_CONSTANT_SMALLINT:	printf("CONSTANT_SMALLINT <%d>\n", code[1] << 8 | code[2]); return 3;
 
 		case DM_OP_ARRAYLIT:			printf("ARRAYLIT\n"); return 1;
 		case DM_OP_TABLELIT:			printf("TABLELIT\n"); return 1;
@@ -179,14 +179,14 @@ static int decompile_op(uint8_t *code) {
 		case DM_OP_GREATER:				printf("GREATER\n"); return 1;
 		case DM_OP_GREATEREQUAL:		printf("GREATEREQUAL\n"); return 1;
 
-		case DM_OP_JUMP_IF_TRUE:		printf("JUMP IF TRUE %d\n", code[1] << 8 | code[2]); return 3;
-		case DM_OP_JUMP_IF_FALSE:		printf("JUMP IF FALSE %d\n", code[1] << 8 | code[2]); return 3;
-		case DM_OP_JUMP_IF_FALSE_POP:	printf("JUMP IF FALSE POP %d\n", code[1] << 8 | code[2]); return 3;
+		case DM_OP_JUMP_IF_TRUE_OR_POP:	printf("JUMP_IF_TRUE_OR_POP %d\n", code[1] << 8 | code[2]); return 3;
+		case DM_OP_JUMP_IF_FALSE_OR_POP:printf("JUMP_IF_FALSE_OR_POP %d\n", code[1] << 8 | code[2]); return 3;
+		case DM_OP_JUMP_IF_FALSE:		printf("JUMP_IF_FALSE %d\n", code[1] << 8 | code[2]); return 3;
 		case DM_OP_JUMP:				printf("JUMP %d\n", code[1] << 8 | code[2]); return 3;
 
 		case DM_OP_POP:					printf("POP\n"); return 1;
 		case DM_OP_RETURN:				printf("RETURN\n"); return 1;
-		default: 						printf("UNKNOWN OPCODE\n"); return 1;
+		default: 						printf("UNKNOWN_OPCODE\n"); return 1;
 	}
 }
 

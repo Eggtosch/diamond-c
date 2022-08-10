@@ -234,23 +234,27 @@ static dm_value exec_func(dm_value f, dm_array *stack, int nargs) {
 				}
 				break;
 			}
-			case DM_OP_JUMP_IF_TRUE:        {
+			case DM_OP_JUMP_IF_TRUE_OR_POP: {
 				dm_value val = stack_peek(stack);
 				uint16_t addr = read16(chunk);
 				if (!is_falsey(val)) {
 					chunk->ip = addr;
+				} else {
+					stack_pop(stack);
 				}
 				break;
 			}
-			case DM_OP_JUMP_IF_FALSE:       {
+			case DM_OP_JUMP_IF_FALSE_OR_POP:{
 				dm_value val = stack_peek(stack);
 				uint16_t addr = read16(chunk);
 				if (is_falsey(val)) {
 					chunk->ip = addr;
+				} else {
+					stack_pop(stack);
 				}
 				break;
 			}
-			case DM_OP_JUMP_IF_FALSE_POP:   {
+			case DM_OP_JUMP_IF_FALSE:       {
 				dm_value val = stack_pop(stack);
 				uint16_t addr = read16(chunk);
 				if (is_falsey(val)) {

@@ -473,13 +473,13 @@ static void punary(dm_parser *parser) {
 }
 
 static void pand(dm_parser *parser) {
-	int jump_if_false_patch = dm_chunk_emit_jump(&parser->chunk, DM_OP_JUMP_IF_FALSE, 0);
+	int jump_if_false_patch = dm_chunk_emit_jump(&parser->chunk, DM_OP_JUMP_IF_FALSE_OR_POP, 0);
 	pexpression(parser);
 	dm_chunk_patch_jump(&parser->chunk, jump_if_false_patch);
 }
 
 static void por(dm_parser *parser) {
-	int jump_if_false_patch = dm_chunk_emit_jump(&parser->chunk, DM_OP_JUMP_IF_TRUE, 0);
+	int jump_if_false_patch = dm_chunk_emit_jump(&parser->chunk, DM_OP_JUMP_IF_TRUE_OR_POP, 0);
 	pexpression(parser);
 	dm_chunk_patch_jump(&parser->chunk, jump_if_false_patch);
 }
@@ -514,7 +514,7 @@ static int pelsif(dm_parser *parser) {
 	pexpression(parser);
 	pconsume(parser, DM_TOKEN_THEN, "expect 'then' after if expression");
 
-	int jump_if_false_patch = dm_chunk_emit_jump(&parser->chunk, DM_OP_JUMP_IF_FALSE_POP, 0);
+	int jump_if_false_patch = dm_chunk_emit_jump(&parser->chunk, DM_OP_JUMP_IF_FALSE, 0);
 
 	if (!pis_end_of_if_body(parser)) {
 		pexpression(parser);
@@ -570,7 +570,7 @@ static void pwhile(dm_parser *parser) {
 	pexpression(parser);
 	pconsume(parser, DM_TOKEN_DO, "expect 'do' after while expression");
 
-	int jump_if_false_patch = dm_chunk_emit_jump(&parser->chunk, DM_OP_JUMP_IF_FALSE_POP, 0);
+	int jump_if_false_patch = dm_chunk_emit_jump(&parser->chunk, DM_OP_JUMP_IF_FALSE, 0);
 
 	while (!pcheck(parser, DM_TOKEN_END) && !pcheck(parser, DM_TOKEN_EOF)) {
 		if (pmatch(parser, DM_TOKEN_SEMICOLON)) {
@@ -579,7 +579,7 @@ static void pwhile(dm_parser *parser) {
 			dm_chunk_emit_jump(&parser->chunk, DM_OP_JUMP, loop_start_addr);
 		} else if (pmatch(parser, DM_TOKEN_BREAK)) {
 			dm_chunk_emit(&parser->chunk, DM_OP_FALSE);
-			dm_chunk_emit_jump(&parser->chunk, DM_OP_JUMP_IF_FALSE_POP, jump_if_false_patch);
+			dm_chunk_emit_jump(&parser->chunk, DM_OP_JUMP_IF_FALSE, jump_if_false_patch);
 		} else {
 			dm_chunk_emit(&parser->chunk, DM_OP_POP);
 			pexpression(parser);
@@ -600,7 +600,7 @@ static void pfor(dm_parser *parser) {
 	pexpression(parser);
 	pconsume(parser, DM_TOKEN_COMMA, "expect ',' after condition expression");
 
-	int jump_if_false_patch = dm_chunk_emit_jump(&parser->chunk, DM_OP_JUMP_IF_FALSE_POP, 0);
+	int jump_if_false_patch = dm_chunk_emit_jump(&parser->chunk, DM_OP_JUMP_IF_FALSE, 0);
 	int loop_body_patch = dm_chunk_emit_jump(&parser->chunk, DM_OP_JUMP, 0);
 
 	int update_addr = dm_chunk_current_address(&parser->chunk);
@@ -818,3 +818,4 @@ unop ::= '-' | 'not'
 
 primitives are nil, bool, int, float, string, array, table, function
 */
+

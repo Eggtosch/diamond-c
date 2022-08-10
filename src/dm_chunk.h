@@ -20,8 +20,8 @@ typedef enum {
 	DM_OP_FALSE,				// op8 | [] -> [value]
 	DM_OP_NIL,					// op8 | [] -> [value]
 
-	DM_OP_CALL,
-	DM_OP_CALL_WITHPARENT,
+	DM_OP_CALL,					// op8 nargs8 | [func, arg1, ..., argn] -> [result]
+	DM_OP_CALL_WITHPARENT,		// op8 nargs8 | [parent, func, arg1, ..., argn] -> [result]
 
 	DM_OP_NEGATE,				// op8 | [value] -> [value]
 	DM_OP_NOT,					// op8 | [value] -> [value]
@@ -36,9 +36,9 @@ typedef enum {
 	DM_OP_GREATER,				// op8 | [value1, value2] -> [value]
 	DM_OP_GREATEREQUAL,			// op8 | [value1, value2] -> [value]
 
-	DM_OP_JUMP_IF_TRUE,			// op8 addr16 | [cond] -> []
+	DM_OP_JUMP_IF_TRUE_OR_POP,	// op8 addr16 | cond ? [cond] -> [cond] : [cond] -> []
+	DM_OP_JUMP_IF_FALSE_OR_POP,	// op8 addr16 | cond ? [cond] -> [] : [cond] -> [cond]
 	DM_OP_JUMP_IF_FALSE,		// op8 addr16 | [cond] -> []
-	DM_OP_JUMP_IF_FALSE_POP,	// op8 addr16 | [cond] -> []
 	DM_OP_JUMP,					// op8 addr16 | [] -> []
 
 	DM_OP_POP,					// op8 | [value] -> []
