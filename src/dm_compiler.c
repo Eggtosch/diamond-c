@@ -349,7 +349,7 @@ static void parraylit(dm_parser *parser) {
 		} while (pmatch(parser, DM_TOKEN_COMMA));
 	}
 	pconsume(parser, DM_TOKEN_RIGHT_BRACKET, "expect ']'");
-	dm_chunk_emit(&parser->chunk, DM_OP_ARRAYLIT);
+	dm_chunk_emit_arg16(&parser->chunk, DM_OP_ARRAYLIT, nelems);
 }
 
 static void parrayget(dm_parser *parser) {
@@ -374,8 +374,7 @@ static void ptablelit(dm_parser *parser) {
 		} while (pmatch(parser, DM_TOKEN_COMMA));
 	}
 	pconsume(parser, DM_TOKEN_RIGHT_BRACE, "expect '}'");
-	dm_chunk_emit(&parser->chunk, DM_OP_TABLELIT);
-	printf("table literal %d\n", nelems);
+	dm_chunk_emit_arg16(&parser->chunk, DM_OP_TABLELIT, nelems);
 }
 
 static void pstring(dm_parser *parser) {

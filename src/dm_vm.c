@@ -102,9 +102,20 @@ static dm_value exec_func(dm_value f, dm_array *stack, int nargs) {
 				break;
 			}
 			case DM_OP_ARRAYLIT:            {
+				int elements = read16(chunk);
+				while (elements--) {
+					stack_pop(stack);
+				}
+				stack_push(stack, dm_value_nil()); // resulting array
 				break;
 			}
 			case DM_OP_TABLELIT:            {
+				int elements = read16(chunk);
+				while (elements--) {
+					stack_pop(stack); // key
+					stack_pop(stack); // value
+				}
+				stack_push(stack, dm_value_nil()); // resulting table
 				break;
 			}
 			case DM_OP_TRUE:                {
@@ -120,9 +131,22 @@ static dm_value exec_func(dm_value f, dm_array *stack, int nargs) {
 				break;
 			}
 			case DM_OP_CALL:                {
+				int arguments = read8(chunk);
+				while (arguments--) {
+					stack_pop(stack);
+				}
+				stack_pop(stack); // function value
+				stack_push(stack, dm_value_nil()); // result of function
 				break;
 			}
 			case DM_OP_CALL_WITHPARENT:     {
+				int arguments = read8(chunk);
+				while (arguments--) {
+					stack_pop(stack);
+				}
+				stack_pop(stack); // function value
+				stack_pop(stack); // parent
+				stack_push(stack, dm_value_nil()); // result of function
 				break;
 			}
 			case DM_OP_NEGATE:              {
