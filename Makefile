@@ -8,7 +8,7 @@ LIBS    := -lreadline
 BINARY       := diamond
 OBJDIR       := src/.bin
 CFILES       := src/dm_main.c src/dm_state.c src/dm_vm.c src/dm_compiler.c \
-				src/dm_chunk.c src/dm_value.c src/dm_array.c
+				src/dm_chunk.c src/dm_value.c src/dm_generic_array.c
 OBJS         := $(CFILES:%.c=$(OBJDIR)/%.o)
 HEADER_DEPS  := $(CFILES:%.c=$(OBJDIR)/%.d)
 

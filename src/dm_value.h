@@ -25,7 +25,7 @@ typedef struct {
 	int capacity;
 	int size;
 	void *values;
-} dm_varray;
+} dm_array;
 typedef struct {
 	void *chunk;
 	int nargs;
@@ -38,7 +38,7 @@ typedef struct {
 		dm_int       int_val;
 		dm_float     float_val;
 		dm_string   *str_val;
-		dm_varray   *arr_val;
+		dm_array   *arr_val;
 		dm_function *func_val;
 	};
 } dm_value;

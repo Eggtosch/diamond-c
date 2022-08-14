@@ -27,35 +27,35 @@ static int variable_compare(int size, void *e1, void *e2) {
 
 void dm_chunk_init(dm_chunk *chunk) {
 	*chunk = (dm_chunk){{}, 0, {}, {}};
-	dm_array_new(&chunk->code, sizeof(uint8_t), byte_compare);
-	dm_array_new(&chunk->constants, sizeof(dm_value), value_compare);
-	dm_array_new(&chunk->variables, sizeof(struct variable), variable_compare);
+	dm_gen_array_new(&chunk->code, sizeof(uint8_t), byte_compare);
+	dm_gen_array_new(&chunk->constants, sizeof(dm_value), value_compare);
+	dm_gen_array_new(&chunk->variables, sizeof(struct variable), variable_compare);
 }
 
 void dm_chunk_free(dm_chunk *chunk) {
-	dm_array_free(&chunk->code);
-	dm_array_free(&chunk->constants);
+	dm_gen_array_free(&chunk->code);
+	dm_gen_array_free(&chunk->constants);
 	
-	int n_variables = dm_array_size(&chunk->variables);
+	int n_variables = dm_gen_array_size(&chunk->variables);
 	for (int i = 0; i < n_variables; i++) {
-		struct variable *v = (struct variable*) dm_array_get(&chunk->variables, i);
+		struct variable *v = (struct variable*) dm_gen_array_get(&chunk->variables, i);
 		free((void*) v->name);
 		v->name = NULL;
 	}
-	dm_array_free(&chunk->variables);
+	dm_gen_array_free(&chunk->variables);
 	*chunk = (dm_chunk){{}, 0, {}, {}};
 }
 
 void dm_chunk_reset_code(dm_chunk *chunk) {
-	dm_array_clear(&chunk->code);
+	dm_gen_array_clear(&chunk->code);
 }
 
 int dm_chunk_current_address(dm_chunk *chunk) {
-	return dm_array_size(&chunk->code);
+	return dm_gen_array_size(&chunk->code);
 }
 
 static void emit_byte(dm_chunk *chunk, uint8_t byte) {
-	dm_array_push(&chunk->code, (void*) &byte);
+	dm_gen_array_push(&chunk->code, (void*) &byte);
 }
 
 void dm_chunk_emit(dm_chunk *chunk, dm_opcode opcode) {
@@ -63,9 +63,9 @@ void dm_chunk_emit(dm_chunk *chunk, dm_opcode opcode) {
 }
 
 void dm_chunk_emit_constant(dm_chunk *chunk, dm_value value) {
-	int index = dm_array_index(&chunk->constants, (void*) &value);
+	int index = dm_gen_array_index(&chunk->constants, (void*) &value);
 	if (index == -1) {
-		index = dm_array_push(&chunk->constants, (void*) &value);
+		index = dm_gen_array_push(&chunk->constants, (void*) &value);
 	}
 	dm_chunk_emit_arg16(chunk, DM_OP_CONSTANT, index);
 }
@@ -109,14 +109,14 @@ void dm_chunk_patch_jump(dm_chunk *chunk, int addr_location) {
 	}
 
 	uint16_t addr = dm_chunk_current_address(chunk);
-	*(uint8_t*) dm_array_get(&chunk->code, addr_location) = (uint8_t) (addr >> 8);
-	*(uint8_t*) dm_array_get(&chunk->code, addr_location+1) = (uint8_t) (addr & 0xff);
+	*(uint8_t*) dm_gen_array_get(&chunk->code, addr_location) = (uint8_t) (addr >> 8);
+	*(uint8_t*) dm_gen_array_get(&chunk->code, addr_location+1) = (uint8_t) (addr & 0xff);
 }
 
 int dm_chunk_add_var(dm_chunk *chunk, const char *name, int size) {
-	int n_variables = dm_array_size(&chunk->variables);
+	int n_variables = dm_gen_array_size(&chunk->variables);
 	for (int i = 0; i < n_variables; i++) {
-		const char *try_name = ((struct variable*) dm_array_get(&chunk->variables, i))->name;
+		const char *try_name = ((struct variable*) dm_gen_array_get(&chunk->variables, i))->name;
 		if (strlen(try_name) == (size_t) size && strncmp(try_name, name, size) == 0) {
 			return i;
 		}
@@ -126,18 +126,18 @@ int dm_chunk_add_var(dm_chunk *chunk, const char *name, int size) {
 	memcpy(new_name, name, size);
 	new_name[size] = '\0';
 	struct variable new_var = {new_name, dm_value_nil()};
-	return dm_array_push(&chunk->variables, (void*) &new_var);
+	return dm_gen_array_push(&chunk->variables, (void*) &new_var);
 }
 
 void dm_chunk_set_var(dm_chunk *chunk, int index, dm_value v) {
-	struct variable *var = dm_array_get(&chunk->variables, index);
+	struct variable *var = dm_gen_array_get(&chunk->variables, index);
 	if (var != NULL) {
 		var->value = v;
 	}
 }
 
 dm_value dm_chunk_get_var(dm_chunk *chunk, int index) {
-	struct variable *var = dm_array_get(&chunk->variables, index);
+	struct variable *var = dm_gen_array_get(&chunk->variables, index);
 	if (var != NULL) {
 		return var->value;
 	}
@@ -192,23 +192,23 @@ static int decompile_op(uint8_t *code) {
 }
 
 void dm_chunk_decompile(dm_chunk *chunk) {
-	for (int i = 0; i < dm_array_size(&chunk->code);) {
+	for (int i = 0; i < dm_gen_array_size(&chunk->code);) {
 		printf("%d: ", i);
-		i += decompile_op((uint8_t*) dm_array_get(&chunk->code, i));
+		i += decompile_op((uint8_t*) dm_gen_array_get(&chunk->code, i));
 	}
 
 	printf("Constants:\n");
-	int n_consts = dm_array_size(&chunk->constants);
+	int n_consts = dm_gen_array_size(&chunk->constants);
 	for (int i = 0; i < n_consts; i++) {
 		printf("%d: ", i);
-		dm_value_inspect(*(dm_value*) dm_array_get(&chunk->constants, i));
+		dm_value_inspect(*(dm_value*) dm_gen_array_get(&chunk->constants, i));
 		printf("\n");
 	}
 
 	printf("Variables:\n");
-	int n_variables = dm_array_size(&chunk->variables);
+	int n_variables = dm_gen_array_size(&chunk->variables);
 	for (int i = 0; i < n_variables; i++) {
-		struct variable *var = (struct variable*) dm_array_get(&chunk->variables, i);
+		struct variable *var = (struct variable*) dm_gen_array_get(&chunk->variables, i);
 		printf("%d: %s -> ", i, var->name);
 		dm_value_inspect(var->value);
 		printf("\n");

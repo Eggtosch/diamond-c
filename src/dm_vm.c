@@ -5,51 +5,51 @@
 #include <dm_compiler.h>
 #include <dm_value.h>
 #include <dm_chunk.h>
-#include <dm_array.h>
+#include <dm_generic_array.h>
 
 static int stack_value_compare(int size, void *e1, void *e2) {
 	(void) size;
 	return dm_value_equal(*(dm_value*) e1, *(dm_value*) e2) ? 0 : 1;
 }
 
-static void stack_init(dm_array *stack) {
-	dm_array_new(stack, sizeof(dm_value), stack_value_compare);
+static void stack_init(dm_gen_array *stack) {
+	dm_gen_array_new(stack, sizeof(dm_value), stack_value_compare);
 }
 
-static void stack_free(dm_array *stack) {
-	dm_array_free(stack);
+static void stack_free(dm_gen_array *stack) {
+	dm_gen_array_free(stack);
 }
 
-static void stack_push(dm_array *stack, dm_value val) {
-	dm_array_push(stack, (void*) &val);
+static void stack_push(dm_gen_array *stack, dm_value val) {
+	dm_gen_array_push(stack, (void*) &val);
 }
 
-static dm_value stack_pop(dm_array *stack) {
+static dm_value stack_pop(dm_gen_array *stack) {
 	dm_value result;
-	if (dm_array_pop(stack, (void*) &result)) {
+	if (dm_gen_array_pop(stack, (void*) &result)) {
 		return result;
 	}
 	return dm_value_nil();
 }
 
-static dm_value stack_peek(dm_array *stack) {
-	int size = dm_array_size(stack);
+static dm_value stack_peek(dm_gen_array *stack) {
+	int size = dm_gen_array_size(stack);
 	if (size <= 0) {
 		return dm_value_nil();
 	}
-	return *(dm_value*) dm_array_get(stack, size - 1);
+	return *(dm_value*) dm_gen_array_get(stack, size - 1);
 }
 
 static uint8_t read8(dm_chunk *chunk) {
-	uint8_t b = *(uint8_t*) dm_array_get(&chunk->code, chunk->ip);
+	uint8_t b = *(uint8_t*) dm_gen_array_get(&chunk->code, chunk->ip);
 	chunk->ip++;
 	return b;
 }
 
 static uint16_t read16(dm_chunk *chunk) {
-	uint16_t s = *(uint8_t*) dm_array_get(&chunk->code, chunk->ip);
+	uint16_t s = *(uint8_t*) dm_gen_array_get(&chunk->code, chunk->ip);
 	s <<= 8;
-	s += *(uint8_t*) dm_array_get(&chunk->code, chunk->ip + 1);
+	s += *(uint8_t*) dm_gen_array_get(&chunk->code, chunk->ip + 1);
 	chunk->ip += 2;
 	return s;
 }
@@ -58,7 +58,7 @@ static bool is_falsey(dm_value val) {
 	return dm_value_is(val, DM_TYPE_NIL) || (dm_value_is(val, DM_TYPE_BOOL) && val.bool_val == false);
 }
 
-static dm_value exec_func(dm_value f, dm_array *stack, int nargs) {
+static dm_value exec_func(dm_value f, dm_gen_array *stack, int nargs) {
 	if (!dm_value_is(f, DM_TYPE_FUNCTION) || nargs != 0) {
 		return dm_value_nil();
 	}
@@ -93,7 +93,7 @@ static dm_value exec_func(dm_value f, dm_array *stack, int nargs) {
 			}
 			case DM_OP_CONSTANT:            {
 				uint16_t index = read16(chunk);
-				stack_push(stack, *(dm_value*) dm_array_get(&chunk->constants, index));
+				stack_push(stack, *(dm_value*) dm_gen_array_get(&chunk->constants, index));
 				break;
 			}
 			case DM_OP_CONSTANT_SMALLINT:	{
@@ -316,7 +316,7 @@ dm_value dm_vm_exec(dm_state *dm, char *prog) {
 		return dm_value_nil();
 	}
 
-	dm_array stack;
+	dm_gen_array stack;
 	stack_init(&stack);
 	
 	dm_chunk_decompile((dm_chunk*) dm->main.func_val->chunk);

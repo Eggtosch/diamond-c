@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 #include <dm_value.h>
-#include <dm_array.h>
+#include <dm_generic_array.h>
 
 typedef enum {
 	DM_OP_VARSET,               // op8 index16 | [value] -> []
@@ -47,10 +47,10 @@ typedef enum {
 } dm_opcode;
 
 typedef struct {
-	dm_array code;
+	dm_gen_array code;
 	uint64_t ip;
-	dm_array constants;
-	dm_array variables;
+	dm_gen_array constants;
+	dm_gen_array variables;
 } dm_chunk;
 
 void dm_chunk_init(dm_chunk *chunk);

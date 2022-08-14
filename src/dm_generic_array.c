@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-#include <dm_array.h>
+#include <dm_generic_array.h>
 
 #define DM_ARR_MIN_CAPACITY (16)
 
@@ -9,8 +9,8 @@ static int default_compare(int size, void *e1, void *e2) {
 	return memcmp(e1, e2, size);
 }
 
-void dm_array_new(dm_array *arr, int typesize, int (*compare)(int size, void *e1, void *e2)) {
-	*arr = (dm_array) {
+void dm_gen_array_new(dm_gen_array *arr, int typesize, int (*compare)(int size, void *e1, void *e2)) {
+	*arr = (dm_gen_array) {
 		.typesize = typesize,
 		.capacity = 0,
 		.size     = 0,
@@ -19,9 +19,9 @@ void dm_array_new(dm_array *arr, int typesize, int (*compare)(int size, void *e1
 	};
 }
 
-void dm_array_free(dm_array *arr) {
+void dm_gen_array_free(dm_gen_array *arr) {
 	free(arr->data);
-	*arr = (dm_array) {
+	*arr = (dm_gen_array) {
 		.typesize = 0,
 		.capacity = 0,
 		.size     = 0,
@@ -30,7 +30,7 @@ void dm_array_free(dm_array *arr) {
 	};
 }
 
-void dm_array_clear(dm_array *arr) {
+void dm_gen_array_clear(dm_gen_array *arr) {
 	if (arr->data == NULL) {
 		return;
 	}
@@ -38,11 +38,11 @@ void dm_array_clear(dm_array *arr) {
 	arr->size = 0;
 }
 
-int dm_array_size(dm_array *arr) {
+int dm_gen_array_size(dm_gen_array *arr) {
 	return arr->size;
 }
 
-int dm_array_push(dm_array *arr, void *item) {
+int dm_gen_array_push(dm_gen_array *arr, void *item) {
 	if (arr->size >= arr->capacity) {
 		if (arr->capacity < DM_ARR_MIN_CAPACITY) {
 			arr->capacity = 16;
@@ -55,7 +55,7 @@ int dm_array_push(dm_array *arr, void *item) {
 	return arr->size++;
 }
 
-bool dm_array_pop(dm_array *arr, void *item) {
+bool dm_gen_array_pop(dm_gen_array *arr, void *item) {
 	if (arr->size <= 0) {
 		return false;
 	}
@@ -64,7 +64,7 @@ bool dm_array_pop(dm_array *arr, void *item) {
 	return true;
 }
 
-int dm_array_index(dm_array *arr, void *item) {
+int dm_gen_array_index(dm_gen_array *arr, void *item) {
 	void *current = arr->data;
 	for (int i = 0; i < arr->size; i++) {
 		if (arr->compare(arr->typesize, current, item) == 0) {
@@ -75,7 +75,7 @@ int dm_array_index(dm_array *arr, void *item) {
 	return -1;
 }
 
-void *dm_array_get(dm_array *arr, int index) {
+void *dm_gen_array_get(dm_gen_array *arr, int index) {
 	if (index < 0 || index >= arr->size) {
 		return NULL;
 	}

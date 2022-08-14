@@ -29,7 +29,7 @@ dm_value dm_value_string_len(const char *s, int size) {
 }
 
 dm_value dm_value_array(int capacity) {
-	dm_varray *arr = malloc(sizeof(dm_varray));
+	dm_array *arr = malloc(sizeof(dm_array));
 	arr->capacity = capacity;
 	arr->size = capacity;
 	arr->values = malloc(sizeof(dm_value) * arr->capacity);
@@ -52,7 +52,7 @@ static bool string_equal(dm_string *s1, dm_string *s2) {
 	return s1->size == s2->size && memcmp(s1->data, s2->data, s1->size) == 0;
 }
 
-static bool array_equal(dm_varray *a1, dm_varray *a2) {
+static bool array_equal(dm_array *a1, dm_array *a2) {
 	if (a1->size != a2->size) {
 		return false;
 	}
@@ -82,7 +82,7 @@ bool dm_value_equal(dm_value v1, dm_value v2) {
 	}
 }
 
-void array_inspect(dm_varray *a) {
+void array_inspect(dm_array *a) {
 	printf("[");
 	if (a->size == 0) {
 		printf("]");
@@ -116,7 +116,7 @@ void dm_value_array_set(dm_value a, int index, dm_value v) {
 		return;
 	}
 
-	dm_varray *arr = a.arr_val;
+	dm_array *arr = a.arr_val;
 	if (index >= arr->size) {
 		return;
 	}
