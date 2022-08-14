@@ -105,7 +105,6 @@ static dm_value exec_func(dm_value f, dm_gen_array *stack, int nargs) {
 				int elements = read16(chunk);
 				dm_value arr = dm_value_array(elements);
 				while (elements--) {
-					printf("index: %d\n", elements);
 					dm_value_array_set(arr, elements, stack_pop(stack));
 				}
 				stack_push(stack, arr);
@@ -113,11 +112,13 @@ static dm_value exec_func(dm_value f, dm_gen_array *stack, int nargs) {
 			}
 			case DM_OP_TABLELIT:            {
 				int elements = read16(chunk);
+				dm_value tab = dm_value_table(elements);
 				while (elements--) {
-					stack_pop(stack); // key
-					stack_pop(stack); // value
+					dm_value value = stack_pop(stack);
+					dm_value key = stack_pop(stack);
+					dm_value_table_set(tab, key, value);
 				}
-				stack_push(stack, dm_value_nil()); // resulting table
+				stack_push(stack, tab);
 				break;
 			}
 			case DM_OP_TRUE:                {
