@@ -130,6 +130,10 @@ static dm_value exec_func(dm_value f, dm_array *stack, int nargs) {
 				stack_push(stack, dm_value_nil());
 				break;
 			}
+			case DM_OP_SELF:                {
+				stack_push(stack, dm_value_nil());
+				break;
+			}
 			case DM_OP_CALL:                {
 				int arguments = read8(chunk);
 				while (arguments--) {

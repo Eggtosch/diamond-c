@@ -24,7 +24,7 @@ typedef enum {
 
 	DM_TOKEN_AND, DM_TOKEN_BREAK, DM_TOKEN_DO, DM_TOKEN_ELSE, DM_TOKEN_ELSIF, DM_TOKEN_END, DM_TOKEN_FALSE,
 	DM_TOKEN_FOR, DM_TOKEN_FUNCTION, DM_TOKEN_IF, DM_TOKEN_NEXT, DM_TOKEN_NIL, DM_TOKEN_NOT,
-	DM_TOKEN_OR, DM_TOKEN_RETURN, DM_TOKEN_THEN, DM_TOKEN_TRUE,
+	DM_TOKEN_OR, DM_TOKEN_RETURN, DM_TOKEN_SELF, DM_TOKEN_THEN, DM_TOKEN_TRUE,
 	DM_TOKEN_WHILE,
 
 	DM_TOKEN_ERROR, DM_TOKEN_EOF
@@ -64,6 +64,7 @@ static struct reserved_word reserved_words[] = {
 	{"not",      DM_TOKEN_NOT},
 	{"or",       DM_TOKEN_OR},
 	{"return",   DM_TOKEN_RETURN},
+	{"self",     DM_TOKEN_SELF},
 	{"then",     DM_TOKEN_THEN},
 	{"true",     DM_TOKEN_TRUE},
 	{"while",    DM_TOKEN_WHILE},
@@ -407,6 +408,10 @@ static void pboolean(dm_parser *parser) {
 
 static void pnil(dm_parser *parser) {
 	dm_chunk_emit(&parser->chunk, DM_OP_NIL);
+}
+
+static void pself(dm_parser *parser) {
+	dm_chunk_emit(&parser->chunk, DM_OP_SELF);
 }
 
 static void pgrouping(dm_parser *parser) {
@@ -773,6 +778,7 @@ dm_parserule rules[] = {
 	[DM_TOKEN_WHILE]         = {pwhile,    NULL,     DM_PREC_NONE},
 	[DM_TOKEN_BREAK]         = {NULL,      NULL,     DM_PREC_NONE},
 	[DM_TOKEN_NEXT]          = {NULL,      NULL,     DM_PREC_NONE},
+	[DM_TOKEN_SELF]          = {pself,     NULL,     DM_PREC_NONE},
 
 	[DM_TOKEN_ERROR]         = {NULL,      NULL,     DM_PREC_NONE},
 	[DM_TOKEN_EOF]           = {NULL,      NULL,     DM_PREC_NONE}

@@ -162,6 +162,7 @@ static int decompile_op(uint8_t *code) {
 		case DM_OP_TRUE:				printf("TRUE\n"); return 1;
 		case DM_OP_FALSE:				printf("FALSE\n"); return 1;
 		case DM_OP_NIL:					printf("NIL\n"); return 1;
+		case DM_OP_SELF:                printf("SELF\n"); return 1;
 
 		case DM_OP_CALL:				printf("CALL %d\n", code[1]); return 2;
 		case DM_OP_CALL_WITHPARENT:		printf("CALL_WITHPARENT %d\n", code[1]); return 2;
