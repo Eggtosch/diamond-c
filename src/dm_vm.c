@@ -103,10 +103,12 @@ static dm_value exec_func(dm_value f, dm_array *stack, int nargs) {
 			}
 			case DM_OP_ARRAYLIT:            {
 				int elements = read16(chunk);
+				dm_value arr = dm_value_array(elements);
 				while (elements--) {
-					stack_pop(stack);
+					printf("index: %d\n", elements);
+					dm_value_array_set(arr, elements, stack_pop(stack));
 				}
-				stack_push(stack, dm_value_nil()); // resulting array
+				stack_push(stack, arr);
 				break;
 			}
 			case DM_OP_TABLELIT:            {
