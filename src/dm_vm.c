@@ -83,12 +83,28 @@ static dm_value exec_func(dm_value f, dm_gen_array *stack, int nargs) {
 				break;
 			}
 			case DM_OP_FIELDSET:            {
+				dm_value v = stack_pop(stack);
+				dm_value field = stack_pop(stack);
+				dm_value table = stack_pop(stack);
+				(void) field;
+				(void) table;
+				stack_push(stack, v);
 				break;
 			}
 			case DM_OP_FIELDGET:            {
+				dm_value field = stack_pop(stack);
+				dm_value table = stack_pop(stack);
+				(void) field;
+				(void) table;
+				stack_push(stack, dm_value_nil()); // retrieved field value
 				break;
 			}
 			case DM_OP_FIELDGET_PUSHPARENT: {
+				dm_value field = stack_pop(stack);
+				dm_value table = stack_peek(stack);
+				(void) field;
+				(void) table;
+				stack_push(stack, dm_value_nil()); // retrieved field value
 				break;
 			}
 			case DM_OP_CONSTANT:            {

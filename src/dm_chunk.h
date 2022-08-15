@@ -5,8 +5,8 @@
 #include <dm_generic_array.h>
 
 typedef enum {
-	DM_OP_VARSET,               // op8 index16 | [value] -> []
-	DM_OP_VARGET,               // op8 index16 | [] -> []
+	DM_OP_VARSET,               // op8 index16 | [value] -> [value]
+	DM_OP_VARGET,               // op8 index16 | [] -> [value]
 	DM_OP_FIELDSET,             // op8 | [table, field, value] -> [value]
 	DM_OP_FIELDGET,             // op8 | [table, field] -> [value]
 	DM_OP_FIELDGET_PUSHPARENT,  // op8 | [table, field] -> [table, value]
