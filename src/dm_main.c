@@ -77,3 +77,4 @@ int main(int argc, char **argv) {
 	dm_close(dm);
 	return 0;
 }
+

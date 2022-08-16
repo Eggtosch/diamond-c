@@ -2,6 +2,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <dm_value.h>
+#include <dm_gc.h>
+#include <dm_chunk.h>
 
 #define TABLE_INVALID_VAL ((dm_value){DM_TYPE_NIL, {.int_val = 0xDEAD}})
 #define TABLE_INVALID_CODE (0xDEAD)
@@ -22,8 +24,14 @@ dm_value dm_value_float(dm_float float_val) {
 	return (dm_value){DM_TYPE_FLOAT, {.float_val = float_val}};
 }
 
-dm_value dm_value_string_len(const char *s, int size) {
-	dm_string *str = malloc(sizeof(dm_string));
+static void string_free(dm_state *dm, struct dm_gc_obj *obj) {
+	(void) dm;
+	dm_string *str = (dm_string*) obj;
+	free(str->data);
+}
+
+dm_value dm_value_string_len(dm_state *dm, const char *s, int size) {
+	dm_string *str = (dm_string*) dm_gc_malloc(dm, sizeof(dm_string), NULL, string_free);
 	str->size = size;
 	str->data = malloc(size + 1);
 	memcpy(str->data, s, size);
@@ -31,8 +39,29 @@ dm_value dm_value_string_len(const char *s, int size) {
 	return (dm_value){DM_TYPE_STRING, {.str_val = str}};
 }
 
-dm_value dm_value_array(int capacity) {
-	dm_array *arr = malloc(sizeof(dm_array));
+static void array_mark(dm_state *dm, struct dm_gc_obj *obj) {
+	dm_array *arr = (dm_array*) obj;
+	dm_value *data = (dm_value*) arr->values;
+	for (int i = 0; i < arr->size; i++) {
+		if (dm_value_is_gc_obj(data[i])) {
+			dm_gc_mark(dm, data[i].gc_obj);
+		}
+	}
+}
+
+static void array_free(dm_state *dm, struct dm_gc_obj *obj) {
+	dm_array *arr = (dm_array*) obj;
+	dm_value *data = (dm_value*) arr->values;
+	for (int i = 0; i < arr->size; i++) {
+		if (dm_value_is_gc_obj(data[i])) {
+			dm_gc_mark(dm, data[i].gc_obj);
+		}
+	}
+	free(arr->values);
+}
+
+dm_value dm_value_array(dm_state *dm, int capacity) {
+	dm_array *arr = (dm_array*) dm_gc_malloc(dm, sizeof(dm_array), array_mark, array_free);
 	arr->capacity = capacity;
 	arr->size = capacity;
 	arr->values = malloc(sizeof(dm_value) * arr->capacity);
@@ -40,8 +69,48 @@ dm_value dm_value_array(int capacity) {
 	return (dm_value){DM_TYPE_ARRAY, {.arr_val = arr}};
 }
 
-dm_value dm_value_table(int size) {
-	dm_table *table = malloc(sizeof(dm_table));
+static bool table_is_invalid_entry(dm_value v) {
+	return v.type == DM_TYPE_NIL && v.int_val == TABLE_INVALID_CODE;
+}
+
+static void table_mark(dm_state *dm, struct dm_gc_obj *obj) {
+	dm_table *t = (dm_table*) obj;
+	dm_value *keys = (dm_value*) t->keys;
+	dm_value *values = (dm_value*) t->values;
+	for (int i = 0; i < t->size; i++) {
+		if (table_is_invalid_entry(keys[i]) || table_is_invalid_entry(values[i])) {
+			continue;
+		}
+		if (dm_value_is_gc_obj(keys[i])) {
+			dm_gc_mark(dm, keys[i].gc_obj);
+		}
+		if (dm_value_is_gc_obj(values[i])) {
+			dm_gc_mark(dm, values[i].gc_obj);
+		}
+	}
+}
+
+static void table_free(dm_state *dm, struct dm_gc_obj *obj) {
+	dm_table *t = (dm_table*) obj;
+	dm_value *keys = (dm_value*) t->keys;
+	dm_value *values = (dm_value*) t->values;
+	for (int i = 0; i < t->size; i++) {
+		if (table_is_invalid_entry(keys[i]) || table_is_invalid_entry(values[i])) {
+			continue;
+		}
+		if (dm_value_is_gc_obj(keys[i])) {
+			dm_gc_free(dm, keys[i].gc_obj);
+		}
+		if (dm_value_is_gc_obj(values[i])) {
+			dm_gc_free(dm, values[i].gc_obj);
+		}
+	}
+	free(t->keys);
+	free(t->values);
+}
+
+dm_value dm_value_table(dm_state *dm, int size) {
+	dm_table *table = (dm_table*) dm_gc_malloc(dm, sizeof(dm_table), table_mark, table_free);
 	table->size = size;
 	int bytes = sizeof(dm_value) * table->size;
 	table->keys = malloc(bytes);
@@ -57,9 +126,17 @@ dm_value dm_value_table(int size) {
 	return (dm_value){DM_TYPE_TABLE, {.table_val = table}};
 }
 
-dm_value dm_value_function(void *chunk, int nargs) {
-	dm_function *func = malloc(sizeof(dm_function));
-	func->chunk = chunk;
+static void function_free(dm_state *dm, struct dm_gc_obj *obj) {
+	(void) dm;
+	dm_function *func = (dm_function*) obj;
+	dm_chunk_free(func->chunk);
+	free(func->chunk);
+}
+
+dm_value dm_value_function(dm_state *dm, void *chunk, int nargs) {
+	dm_function *func = (dm_function*) dm_gc_malloc(dm, sizeof(dm_function), NULL, function_free);
+	func->chunk = malloc(sizeof(dm_chunk));
+	memcpy(func->chunk, chunk, sizeof(dm_chunk));
 	func->nargs = nargs;
 	return (dm_value){DM_TYPE_FUNCTION, {.func_val = func}};
 }
@@ -161,6 +238,13 @@ void dm_value_inspect(dm_value v) {
 		case DM_TYPE_FUNCTION: printf("<function %p>", v.func_val);                  return;
 		default:			 return;
 	}
+}
+
+bool dm_value_is_gc_obj(dm_value v) {
+	return v.type == DM_TYPE_STRING
+		|| v.type == DM_TYPE_ARRAY
+		|| v.type == DM_TYPE_TABLE
+		|| v.type == DM_TYPE_FUNCTION;
 }
 
 void dm_value_array_set(dm_value a, int index, dm_value v) {

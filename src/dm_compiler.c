@@ -5,6 +5,7 @@
 
 #include <dm_compiler.h>
 #include <dm_chunk.h>
+#include <dm_state.h>
 
 //#############################################################
 
@@ -221,6 +222,7 @@ dm_token lex(dm_lexer *lexer) {
 //#############################################################
 
 typedef struct dm_parser {
+	dm_state *dm;
 	dm_lexer *lexer;
 	dm_chunk chunk;
 	dm_token current;
@@ -381,7 +383,7 @@ static void ptablelit(dm_parser *parser) {
 static void pstring(dm_parser *parser) {
 	const char *s = parser->previous.begin + 1;
 	int len = parser->previous.len - 2;
-	dm_chunk_emit_constant(&parser->chunk, dm_value_string_len(s, len));
+	dm_chunk_emit_constant(&parser->chunk, dm_value_string_len(parser->dm, s, len));
 }
 
 static void pinteger(dm_parser *parser) {
@@ -448,15 +450,15 @@ static void pdot(dm_parser *parser) {
 	const char *var = parser->previous.begin;
 	int len = parser->previous.len;
 	if (pmatch(parser, DM_TOKEN_EQUAL)) {
-		dm_chunk_emit_constant(&parser->chunk, dm_value_string_len(var, len));
+		dm_chunk_emit_constant(&parser->chunk, dm_value_string_len(parser->dm, var, len));
 		pexpression(parser);
 		dm_chunk_emit(&parser->chunk, DM_OP_FIELDSET);
 	} else if (pmatch(parser, DM_TOKEN_LEFT_PAREN)) {
-		dm_chunk_emit_constant(&parser->chunk, dm_value_string_len(var, len));
+		dm_chunk_emit_constant(&parser->chunk, dm_value_string_len(parser->dm, var, len));
 		dm_chunk_emit(&parser->chunk, DM_OP_FIELDGET_PUSHPARENT);
 		pcall_with_parent(parser);
 	} else {
-		dm_chunk_emit_constant(&parser->chunk, dm_value_string_len(var, len));
+		dm_chunk_emit_constant(&parser->chunk, dm_value_string_len(parser->dm, var, len));
 		dm_chunk_emit(&parser->chunk, DM_OP_FIELDGET);
 	}
 }
@@ -659,9 +661,7 @@ static int parglist(dm_parser *parser) {
 
 static dm_value pcompiler_end(dm_parser *parser, int nargs) {
 	dm_chunk_emit(&parser->chunk, DM_OP_RETURN);
-	dm_chunk *func = malloc(sizeof(dm_chunk));
-	*func = parser->chunk;
-	return dm_value_function((void*) func, nargs);
+	return dm_value_function(parser->dm, (void*) &parser->chunk, nargs);
 }
 
 static void pfunction(dm_parser *parser) {
@@ -698,11 +698,13 @@ static void pfunction(dm_parser *parser) {
 
 int dm_compile(dm_state *dm, char *prog) {
 	dm_lexer lexer = {prog, prog, 1};
-	dm_parser parser = {&lexer, {}, {}, {}, false, false};
-	if (dm_value_is(dm->main, DM_TYPE_NIL)) {
+	dm_parser parser = {dm, &lexer, {}, {}, {}, false, false};
+
+	dm_value main = *(dm_value*) dm_state_get_main(dm);
+	if (dm_value_is(main, DM_TYPE_NIL)) {
 		dm_chunk_init(&parser.chunk);
 	} else {
-		parser.chunk = *(dm_chunk*) dm->main.func_val->chunk;
+		parser.chunk = *(dm_chunk*) main.func_val->chunk;
 		dm_chunk_reset_code(&parser.chunk);
 	}
 
@@ -726,12 +728,12 @@ int dm_compile(dm_state *dm, char *prog) {
 		return parser.had_error;
 	}
 
-	if (!dm_value_is(dm->main, DM_TYPE_NIL)) {
-		free(dm->main.func_val);
-		dm->main = dm_value_nil();
+	if (!dm_value_is(main, DM_TYPE_NIL)) {
+		free(main.func_val);
+		dm_state_set_main(dm, dm_value_nil());
 	}
 
-	dm->main = pcompiler_end(&parser, 0);
+	dm_state_set_main(dm, pcompiler_end(&parser, 0));
 	return parser.had_error;
 }
 
