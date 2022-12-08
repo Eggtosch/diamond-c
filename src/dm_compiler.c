@@ -659,9 +659,15 @@ static int parglist(dm_parser *parser) {
 	return nargs;
 }
 
-static dm_value pcompiler_end(dm_parser *parser, int nargs) {
+static dm_value pcompiler_end(dm_parser *parser, dm_value f, int nargs) {
 	dm_chunk_emit(&parser->chunk, DM_OP_RETURN);
-	return dm_value_function(parser->dm, (void*) &parser->chunk, nargs);
+	if (dm_value_is(f, DM_TYPE_NIL)) {
+		f = dm_value_function(parser->dm, (void*) &parser->chunk, nargs);
+	} else {
+		*(dm_chunk*) f.func_val->chunk = parser->chunk;
+		f.func_val->nargs = nargs;
+	}
+	return f;
 }
 
 static void pfunction(dm_parser *parser) {
@@ -687,7 +693,7 @@ static void pfunction(dm_parser *parser) {
 
 	pconsume(parser, DM_TOKEN_END, "expect 'end' at end of function");
 
-	dm_value func = pcompiler_end(parser, nargs);
+	dm_value func = pcompiler_end(parser, dm_value_nil(), nargs);
 	parser->chunk = parent_chunk;
 	dm_chunk_emit_constant(&parser->chunk, func);
 	if (func_name != -1) {
@@ -724,16 +730,10 @@ int dm_compile(dm_state *dm, char *prog) {
 	}
 
 	if (parser.had_error) {
-		dm_chunk_free(&parser.chunk);
 		return parser.had_error;
 	}
 
-	if (!dm_value_is(main, DM_TYPE_NIL)) {
-		free(main.func_val);
-		dm_state_set_main(dm, dm_value_nil());
-	}
-
-	dm_state_set_main(dm, pcompiler_end(&parser, 0));
+	dm_state_set_main(dm, pcompiler_end(&parser, main, 0));
 	return parser.had_error;
 }
 
