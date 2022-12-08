@@ -270,6 +270,10 @@ void dm_value_table_set(dm_value t, dm_value key, dm_value value) {
 	dm_value *keys = (dm_value*) table->keys;
 	dm_value *values = (dm_value*) table->values;
 	for (int i = 0; i < table->size; i++) {
+		if (dm_value_equal(keys[i], key)) {
+			values[i] = value;
+			break;
+		}
 		if (keys[i].int_val != TABLE_INVALID_CODE && values[i].int_val != TABLE_INVALID_CODE) {
 			continue;
 		}

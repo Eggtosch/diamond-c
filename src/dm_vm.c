@@ -82,8 +82,14 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_gen_array *stack) {
 				dm_value v = stack_pop(stack);
 				dm_value field = stack_pop(stack);
 				dm_value table = stack_pop(stack);
-				(void) field;
-				(void) table;
+				if (dm_value_is(table, DM_TYPE_ARRAY)) {
+					if (!dm_value_is(field, DM_TYPE_INT)) {
+						// error;
+					}
+					dm_value_array_set(table, field.int_val, v);
+				} else if (dm_value_is(table, DM_TYPE_TABLE)) {
+					dm_value_table_set(table, field, v);
+				}
 				stack_push(stack, v);
 				break;
 			}
@@ -124,7 +130,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_gen_array *stack) {
 			}
 			case DM_OP_TABLELIT:            {
 				int elements = read16(chunk);
-				dm_value tab = dm_value_table(dm, elements);
+				dm_value tab = dm_value_table(dm, elements < 16 ? 16 : elements);
 				while (elements--) {
 					dm_value value = stack_pop(stack);
 					dm_value key = stack_pop(stack);

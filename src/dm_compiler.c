@@ -797,7 +797,7 @@ statement ::= 	var '=' exp |
 				exp
 
 name ::= identifier
-functiondef ::= 'def' name '(' [parlist] ')' functionbody 'end'
+functiondef ::= 'function' name '(' [parlist] ')' functionbody 'end'
 parlist ::= name {',' name}
 functionbody ::= {statement | return exp}
 var ::= name | prefixexp '[' exp ']' | prefixexp '.' name
