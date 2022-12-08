@@ -1,7 +1,12 @@
 CC     := gcc
 RM     := rm -f
 
-CFLAGS  := -Wall -Wextra -Isrc/ -pipe -ggdb -O2 -march=native -MMD -MP
+ifeq (,$(findstring release,$(MAKECMDGOALS)))
+	CFLAGS := -Wall -Wextra -Isrc/ -pipe -ggdb -O2 -march=native -MMD -MP
+else
+	CFLAGS := -Wall -Wextra -Werror -Isrc/ -pipe -Os -march=native -s -MMD -MP
+endif
+
 LDFLAGS := -pipe -flto
 LIBS    := -lreadline
 
@@ -12,8 +17,9 @@ CFILES       := src/dm_main.c src/dm_state.c src/dm_vm.c src/dm_compiler.c \
 OBJS         := $(CFILES:%.c=$(OBJDIR)/%.o)
 HEADER_DEPS  := $(CFILES:%.c=$(OBJDIR)/%.d)
 
-.PHONY: all
+.PHONY: all release
 all: $(OBJDIR) $(BINARY)
+release: $(OBJDIR) $(BINARY)
 
 $(OBJDIR):
 	mkdir -p $(OBJDIR)/src
