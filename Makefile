@@ -13,7 +13,7 @@ DEBUG_BINARY   := bin/debug/diamond
 DEBUG_OBJS     := $(CFILES:%.c=$(DEBUG_OBJDIR)/%.o)
 DEBUG_HEADER_DEPS   := $(CFILES:%.c=$(DEBUG_OBJDIR)/%.d)
 
-RELEASE_FLAGS := -Wall -Wextra -Werror -Isrc/ -pipe -Os -march=native -s -MMD -MP
+RELEASE_FLAGS := -Wall -Wextra -Werror -Isrc/ -pipe -O2 -march=native -s -MMD -MP
 RELEASE_OBJDIR := bin/release
 RELEASE_BINARY := bin/release/diamond
 RELEASE_OBJS   := $(CFILES:%.c=$(RELEASE_OBJDIR)/%.o)
