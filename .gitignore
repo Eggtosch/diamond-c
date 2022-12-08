@@ -1,4 +1,4 @@
-diamond
+compile_commands.json
 .cache/
-src/.bin/
+bin/
 

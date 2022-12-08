@@ -1,41 +1,59 @@
 CC     := gcc
 RM     := rm -f
 
-ifeq (,$(findstring release,$(MAKECMDGOALS)))
-	CFLAGS := -Wall -Wextra -Isrc/ -pipe -ggdb -O2 -march=native -MMD -MP
-else
-	CFLAGS := -Wall -Wextra -Werror -Isrc/ -pipe -Os -march=native -s -MMD -MP
-endif
-
 LDFLAGS := -pipe -flto
 LIBS    := -lreadline
 
-BINARY       := diamond
-OBJDIR       := src/.bin
-CFILES       := src/dm_main.c src/dm_state.c src/dm_vm.c src/dm_compiler.c \
-				src/dm_chunk.c src/dm_value.c src/dm_generic_array.c src/dm_gc.c
-OBJS         := $(CFILES:%.c=$(OBJDIR)/%.o)
-HEADER_DEPS  := $(CFILES:%.c=$(OBJDIR)/%.d)
+CFILES         := src/dm_main.c src/dm_state.c src/dm_vm.c src/dm_compiler.c \
+				  src/dm_chunk.c src/dm_value.c src/dm_generic_array.c src/dm_gc.c
+
+DEBUG_FLAGS := -Wall -Wextra -Isrc/ -pipe -ggdb -O2 -march=native -MMD -MP
+DEBUG_OBJDIR   := bin/debug
+DEBUG_BINARY   := bin/debug/diamond
+DEBUG_OBJS     := $(CFILES:%.c=$(DEBUG_OBJDIR)/%.o)
+DEBUG_HEADER_DEPS   := $(CFILES:%.c=$(DEBUG_OBJDIR)/%.d)
+
+RELEASE_FLAGS := -Wall -Wextra -Werror -Isrc/ -pipe -Os -march=native -s -MMD -MP
+RELEASE_OBJDIR := bin/release
+RELEASE_BINARY := bin/release/diamond
+RELEASE_OBJS   := $(CFILES:%.c=$(RELEASE_OBJDIR)/%.o)
+RELEASE_HEADER_DEPS := $(CFILES:%.c=$(RELEASE_OBJDIR)/%.d)
+
 
 .PHONY: all release
-all: $(OBJDIR) $(BINARY)
-release: $(OBJDIR) $(BINARY)
+all: $(DEBUG_OBJDIR) $(DEBUG_BINARY)
+release: $(RELEASE_OBJDIR) $(RELEASE_BINARY)
 
-$(OBJDIR):
-	mkdir -p $(OBJDIR)/src
 
-$(BINARY): $(OBJS)
-	$(CC) $(LDFLAGS) -o $(BINARY) $(OBJS) $(LIBS)
+$(DEBUG_OBJDIR):
+	mkdir -p $(DEBUG_OBJDIR)/src
 
--include $(HEADER_DEPS)
-$(OBJDIR)/%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+$(DEBUG_BINARY): $(DEBUG_OBJS)
+	$(CC) $(LDFLAGS) -o $(DEBUG_BINARY) $(DEBUG_OBJS) $(LIBS)
+
+-include $(DEBUG_HEADER_DEPS)
+$(DEBUG_OBJDIR)/%.o: %.c
+	$(CC) $(DEBUG_FLAGS) -c $< -o $@
+
+
+$(RELEASE_OBJDIR):
+	mkdir -p $(RELEASE_OBJDIR)/src
+
+$(RELEASE_BINARY): $(RELEASE_OBJS)
+	$(CC) $(LDFLAGS) -o $(RELEASE_BINARY) $(RELEASE_OBJS) $(LIBS)
+
+-include $(RELEASE_HEADER_DEPS)
+$(RELEASE_OBJDIR)/%.o: %.c
+	$(CC) $(RELEASE_FLAGS) -c $< -o $@
+
 
 .PHONY: clean
 clean:
-	$(RM) $(BINARY)
-	$(RM) $(OBJS)
-	$(RM) $(HEADER_DEPS)
+	$(RM) $(DEBUG_BINARY) $(RELEASE_BINARY)
+	$(RM) $(DEBUG_OBJS) $(RELEASE_OBJS)
+	$(RM) $(DEBUG_HEADER_DEPS) $(RELEASE_HEADER_DEPS)
+	$(RM) -r $(DEBUG_OBJDIR) $(RELEASE_OBJDIR)
+
 
 ALL_C_H_FILES := $(shell find . -type f -name "*.c" -o -name "*.h")
 
