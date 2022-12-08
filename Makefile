@@ -13,7 +13,10 @@ OBJS         := $(CFILES:%.c=$(OBJDIR)/%.o)
 HEADER_DEPS  := $(CFILES:%.c=$(OBJDIR)/%.d)
 
 .PHONY: all
-all: $(BINARY)
+all: $(OBJDIR) $(BINARY)
+
+$(OBJDIR):
+	mkdir -p $(OBJDIR)/src
 
 $(BINARY): $(OBJS)
 	$(CC) $(LDFLAGS) -o $(BINARY) $(OBJS) $(LIBS)
