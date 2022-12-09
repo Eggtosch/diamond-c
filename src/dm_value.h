@@ -71,6 +71,8 @@ bool dm_value_equal(dm_value v1, dm_value v2);
 void dm_value_inspect(dm_value v);
 bool dm_value_is_gc_obj(dm_value v);
 
-void dm_value_array_set(dm_value a, int index, dm_value v);
+void dm_value_array_set(dm_value a, dm_value index, dm_value v);
+dm_value dm_value_array_get(dm_value a, dm_value index);
 void dm_value_table_set(dm_value t, dm_value key, dm_value value);
+dm_value dm_value_table_get(dm_value t, dm_value key);
 

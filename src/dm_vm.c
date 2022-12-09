@@ -83,12 +83,11 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_gen_array *stack) {
 				dm_value field = stack_pop(stack);
 				dm_value table = stack_pop(stack);
 				if (dm_value_is(table, DM_TYPE_ARRAY)) {
-					if (!dm_value_is(field, DM_TYPE_INT)) {
-						// error;
-					}
-					dm_value_array_set(table, field.int_val, v);
+					dm_value_array_set(table, field, v);
 				} else if (dm_value_is(table, DM_TYPE_TABLE)) {
 					dm_value_table_set(table, field, v);
+				} else {
+					// error
 				}
 				stack_push(stack, v);
 				break;
@@ -96,17 +95,29 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_gen_array *stack) {
 			case DM_OP_FIELDGET:            {
 				dm_value field = stack_pop(stack);
 				dm_value table = stack_pop(stack);
-				(void) field;
-				(void) table;
-				stack_push(stack, dm_value_nil()); // retrieved field value
+				dm_value v = dm_value_nil();
+				if (dm_value_is(table, DM_TYPE_ARRAY)) {
+					v = dm_value_array_get(table, field);
+				} else if (dm_value_is(table, DM_TYPE_TABLE)) {
+					v = dm_value_table_get(table, field);
+				} else {
+					// error
+				}
+				stack_push(stack, v);
 				break;
 			}
 			case DM_OP_FIELDGET_PUSHPARENT: {
 				dm_value field = stack_pop(stack);
 				dm_value table = stack_peek(stack);
-				(void) field;
-				(void) table;
-				stack_push(stack, dm_value_nil()); // retrieved field value
+				dm_value v = dm_value_nil();
+				if (dm_value_is(table, DM_TYPE_ARRAY)) {
+					v = dm_value_array_get(table, field);
+				} else if (dm_value_is(table, DM_TYPE_TABLE)) {
+					v = dm_value_table_get(table, field);
+				} else {
+					// error
+				}
+				stack_push(stack, v);
 				break;
 			}
 			case DM_OP_CONSTANT:            {
@@ -123,7 +134,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_gen_array *stack) {
 				int elements = read16(chunk);
 				dm_value arr = dm_value_array(dm, elements);
 				while (elements--) {
-					dm_value_array_set(arr, elements, stack_pop(stack));
+					dm_value_array_set(arr, dm_value_int(elements), stack_pop(stack));
 				}
 				stack_push(stack, arr);
 				break;

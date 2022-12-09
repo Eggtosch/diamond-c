@@ -247,18 +247,48 @@ bool dm_value_is_gc_obj(dm_value v) {
 		|| v.type == DM_TYPE_FUNCTION;
 }
 
-void dm_value_array_set(dm_value a, int index, dm_value v) {
+void dm_value_array_set(dm_value a, dm_value index, dm_value v) {
 	if (!dm_value_is(a, DM_TYPE_ARRAY)) {
+		// error
 		return;
 	}
 
+	if (!dm_value_is(index, DM_TYPE_INT)) {
+		// error
+		return;
+	}
+
+	int _index = index.int_val;
 	dm_array *arr = a.arr_val;
-	if (index >= arr->size) {
+	if (_index < 0 || _index >= arr->size) {
+		// error
 		return;
 	}
 
 	dm_value *data = (dm_value*) arr->values;
-	data[index] = v;
+	data[_index] = v;
+}
+
+dm_value dm_value_array_get(dm_value a, dm_value index) {
+	if (!dm_value_is(a, DM_TYPE_ARRAY)) {
+		// error
+		return dm_value_nil();
+	}
+
+	if (!dm_value_is(index, DM_TYPE_INT)) {
+		// error
+		return dm_value_nil();
+	}
+
+	int _index = index.int_val;
+	dm_array *arr = a.arr_val;
+	if (_index < 0 || _index >= arr->size) {
+		// error
+		return dm_value_nil();
+	}
+
+	dm_value *data = (dm_value*) arr->values;
+	return data[_index];
 }
 
 void dm_value_table_set(dm_value t, dm_value key, dm_value value) {
@@ -281,5 +311,26 @@ void dm_value_table_set(dm_value t, dm_value key, dm_value value) {
 		values[i] = value;
 		break;
 	}
+}
+
+dm_value dm_value_table_get(dm_value t, dm_value key) {
+	if (!dm_value_is(t, DM_TYPE_TABLE)) {
+		// error
+		return dm_value_nil();
+	}
+
+	dm_table *table = t.table_val;
+	dm_value *keys = (dm_value*) table->keys;
+	dm_value *values = (dm_value*) table->values;
+	for (int i = 0; i < table->size; i++) {
+		if (keys[i].int_val == TABLE_INVALID_CODE || values[i].int_val == TABLE_INVALID_CODE) {
+			continue;
+		}
+		if (dm_value_equal(keys[i], key)) {
+			return values[i];
+		}
+	}
+
+	return dm_value_nil();
 }
 
