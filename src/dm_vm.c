@@ -56,16 +56,13 @@ static dm_value stack_peekn(dm_stack *stack, int n) {
 }
 
 static uint8_t read8(dm_chunk *chunk) {
-	uint8_t b = *(uint8_t*) dm_gen_array_get(&chunk->code, chunk->ip);
-	chunk->ip++;
-	return b;
+	return chunk->code[chunk->ip++];
 }
 
 static uint16_t read16(dm_chunk *chunk) {
-	uint16_t s = *(uint8_t*) dm_gen_array_get(&chunk->code, chunk->ip);
+	uint16_t s = chunk->code[chunk->ip++];
 	s <<= 8;
-	s += *(uint8_t*) dm_gen_array_get(&chunk->code, chunk->ip + 1);
-	chunk->ip += 2;
+	s |= chunk->code[chunk->ip++];
 	return s;
 }
 

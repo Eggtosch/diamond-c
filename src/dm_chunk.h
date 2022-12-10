@@ -47,7 +47,9 @@ typedef enum {
 } dm_opcode;
 
 typedef struct {
-	dm_gen_array code;
+	uint64_t codesize;
+	uint64_t codecapacity;
+	uint8_t *code;
 	uint64_t ip;
 	dm_gen_array constants;
 	dm_gen_array variables;

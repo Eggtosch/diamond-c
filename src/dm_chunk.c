@@ -13,11 +13,6 @@ static int value_compare(int size, void *e1, void *e2) {
 	return dm_value_equal(*(dm_value*) e1, *(dm_value*) e2) ? 0 : 1;
 }
 
-static int byte_compare(int size, void *e1, void *e2) {
-	(void) size;
-	return *(uint8_t*) e1 == *(uint8_t*) e2;
-}
-
 static int variable_compare(int size, void *e1, void *e2) {
 	(void) size;
 	struct variable *v1 = (struct variable*) e1;
@@ -26,14 +21,18 @@ static int variable_compare(int size, void *e1, void *e2) {
 }
 
 void dm_chunk_init(dm_chunk *chunk) {
-	*chunk = (dm_chunk){{}, 0, {}, {}};
-	dm_gen_array_new(&chunk->code, sizeof(uint8_t), byte_compare);
+	*chunk = (dm_chunk){0, 0, NULL, 0, {}, {}};
+	chunk->codecapacity = 128;
+	chunk->code = malloc(chunk->codecapacity);
 	dm_gen_array_new(&chunk->constants, sizeof(dm_value), value_compare);
 	dm_gen_array_new(&chunk->variables, sizeof(struct variable), variable_compare);
 }
 
 void dm_chunk_free(dm_chunk *chunk) {
-	dm_gen_array_free(&chunk->code);
+	free(chunk->code);
+	chunk->code = NULL;
+	chunk->codesize = 0;
+	chunk->codecapacity = 0;
 	dm_gen_array_free(&chunk->constants);
 	
 	int n_variables = dm_gen_array_size(&chunk->variables);
@@ -43,19 +42,23 @@ void dm_chunk_free(dm_chunk *chunk) {
 		v->name = NULL;
 	}
 	dm_gen_array_free(&chunk->variables);
-	*chunk = (dm_chunk){{}, 0, {}, {}};
+	*chunk = (dm_chunk){0, 0, NULL, 0, {}, {}};
 }
 
 void dm_chunk_reset_code(dm_chunk *chunk) {
-	dm_gen_array_clear(&chunk->code);
+	memset(chunk->code, 0, chunk->codecapacity);
 }
 
 int dm_chunk_current_address(dm_chunk *chunk) {
-	return dm_gen_array_size(&chunk->code);
+	return chunk->codesize;
 }
 
 static void emit_byte(dm_chunk *chunk, uint8_t byte) {
-	dm_gen_array_push(&chunk->code, (void*) &byte);
+	if (chunk->codesize >= chunk->codecapacity) {
+		chunk->codecapacity *= 2;
+		chunk->code = realloc(chunk->code, chunk->codecapacity);
+	}
+	chunk->code[chunk->codesize++] = byte;
 }
 
 void dm_chunk_emit(dm_chunk *chunk, dm_opcode opcode) {
@@ -109,8 +112,8 @@ void dm_chunk_patch_jump(dm_chunk *chunk, int addr_location) {
 	}
 
 	uint16_t addr = dm_chunk_current_address(chunk);
-	*(uint8_t*) dm_gen_array_get(&chunk->code, addr_location) = (uint8_t) (addr >> 8);
-	*(uint8_t*) dm_gen_array_get(&chunk->code, addr_location+1) = (uint8_t) (addr & 0xff);
+	chunk->code[addr_location] = (uint8_t) (addr >> 8);
+	chunk->code[addr_location+1] = (uint8_t) (addr & 0xff);
 }
 
 int dm_chunk_add_var(dm_chunk *chunk, const char *name, int size) {
@@ -192,9 +195,9 @@ static int decompile_op(uint8_t *code) {
 }
 
 void dm_chunk_decompile(dm_chunk *chunk) {
-	for (int i = 0; i < dm_gen_array_size(&chunk->code);) {
-		printf("%d: ", i);
-		i += decompile_op((uint8_t*) dm_gen_array_get(&chunk->code, i));
+	for (uint64_t i = 0; i < chunk->codesize;) {
+		printf("%lu: ", i);
+		i += decompile_op(chunk->code + i);
 	}
 
 	printf("Constants:\n");
