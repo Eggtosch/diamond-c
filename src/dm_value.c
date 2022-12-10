@@ -62,7 +62,7 @@ static void array_free(dm_state *dm, struct dm_gc_obj *obj) {
 
 dm_value dm_value_array(dm_state *dm, int capacity) {
 	dm_array *arr = (dm_array*) dm_gc_malloc(dm, sizeof(dm_array), array_mark, array_free);
-	arr->capacity = capacity;
+	arr->capacity = capacity < 16 ? 16 : capacity;
 	arr->size = capacity;
 	arr->values = malloc(sizeof(dm_value) * arr->capacity);
 	memset(arr->values, 0, sizeof(dm_value) * arr->capacity);
@@ -111,7 +111,7 @@ static void table_free(dm_state *dm, struct dm_gc_obj *obj) {
 
 dm_value dm_value_table(dm_state *dm, int size) {
 	dm_table *table = (dm_table*) dm_gc_malloc(dm, sizeof(dm_table), table_mark, table_free);
-	table->size = size;
+	table->size = size < 16 ? 16 : size;
 	int bytes = sizeof(dm_value) * table->size;
 	table->keys = malloc(bytes);
 	table->values = malloc(bytes);
