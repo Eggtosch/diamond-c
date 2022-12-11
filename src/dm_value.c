@@ -119,7 +119,7 @@ dm_value dm_value_table(dm_state *dm, int size) {
 
 	dm_value *keys = (dm_value*) table->keys;
 	dm_value *values = (dm_value*) table->values;
-	for (int i = 0; i < size; i++) {
+	for (int i = 0; i < table->size; i++) {
 		keys[i] = TABLE_INVALID_VAL;
 		values[i] = TABLE_INVALID_VAL;
 	}
