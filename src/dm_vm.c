@@ -134,7 +134,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 			}
 			case DM_OP_CONSTANT:            {
 				uint16_t index = read16(chunk);
-				stack_push(stack, *(dm_value*) dm_gen_array_get(&chunk->constants, index));
+				stack_push(stack, chunk->consts[index]);
 				break;
 			}
 			case DM_OP_CONSTANT_SMALLINT:	{
