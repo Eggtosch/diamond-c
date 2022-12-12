@@ -69,8 +69,11 @@ void dm_chunk_reset_code(dm_chunk *chunk);
 
 int  dm_chunk_current_address(dm_chunk *chunk);
 
-void dm_chunk_emit(dm_chunk *chunk, dm_opcode opcode);
+int dm_chunk_index_of_string_constant(dm_chunk *chunk, const char *s, size_t len);
 void dm_chunk_emit_constant(dm_chunk *chunk, dm_value value);
+void dm_chunk_emit_constant_i(dm_chunk *chunk, int index);
+
+void dm_chunk_emit(dm_chunk *chunk, dm_opcode opcode);
 void dm_chunk_emit_arg8(dm_chunk *chunk, dm_opcode opcode, int arg8);
 void dm_chunk_emit_arg16(dm_chunk *chunk, dm_opcode opcode, int arg16);
 int  dm_chunk_emit_jump(dm_chunk *chunk, dm_opcode opcode, int dest);

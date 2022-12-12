@@ -450,18 +450,23 @@ static void pdot(dm_parser *parser) {
 	if (!pmatch(parser, DM_TOKEN_IDENTIFIER)) {
 		perr(parser, ". can only be followed by an identifier");
 	}
+
 	const char *var = parser->previous.begin;
 	int len = parser->previous.len;
-	if (pmatch(parser, DM_TOKEN_EQUAL)) {
+	int index = dm_chunk_index_of_string_constant(&parser->chunk, var, len);
+	if (index == -1) {
 		dm_chunk_emit_constant(&parser->chunk, dm_value_string_len(parser->dm, var, len));
+	} else {
+		dm_chunk_emit_constant_i(&parser->chunk, index);
+	}
+
+	if (pmatch(parser, DM_TOKEN_EQUAL)) {
 		pexpression(parser);
 		dm_chunk_emit(&parser->chunk, DM_OP_FIELDSET);
 	} else if (pmatch(parser, DM_TOKEN_LEFT_PAREN)) {
-		dm_chunk_emit_constant(&parser->chunk, dm_value_string_len(parser->dm, var, len));
 		dm_chunk_emit(&parser->chunk, DM_OP_FIELDGET_PUSHPARENT);
 		pcall_with_parent(parser);
 	} else {
-		dm_chunk_emit_constant(&parser->chunk, dm_value_string_len(parser->dm, var, len));
 		dm_chunk_emit(&parser->chunk, DM_OP_FIELDGET);
 	}
 }

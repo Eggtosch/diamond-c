@@ -43,16 +43,16 @@ int dm_chunk_current_address(dm_chunk *chunk) {
 	return chunk->codesize;
 }
 
-static void emit_byte(dm_chunk *chunk, uint8_t byte) {
-	if (chunk->codesize >= chunk->codecapacity) {
-		chunk->codecapacity *= 2;
-		chunk->code = realloc(chunk->code, chunk->codecapacity);
+int dm_chunk_index_of_string_constant(dm_chunk *chunk, const char *s, size_t len) {
+	for (int i = 0; i < chunk->constsize; i++) {
+		dm_value c = chunk->consts[i];
+		if (dm_value_is(c, DM_TYPE_STRING)) {
+			if ((size_t) c.str_val->size == len && strncmp(c.str_val->data, s, len) == 0) {
+				return i;
+			}
+		}
 	}
-	chunk->code[chunk->codesize++] = byte;
-}
-
-void dm_chunk_emit(dm_chunk *chunk, dm_opcode opcode) {
-	emit_byte(chunk, (uint8_t) opcode);
+	return -1;
 }
 
 void dm_chunk_emit_constant(dm_chunk *chunk, dm_value value) {
@@ -71,6 +71,25 @@ void dm_chunk_emit_constant(dm_chunk *chunk, dm_value value) {
 	}
 	chunk->consts[index] = value;
 	dm_chunk_emit_arg16(chunk, DM_OP_CONSTANT, index);
+}
+
+void dm_chunk_emit_constant_i(dm_chunk *chunk, int index) {
+	if (index < 0 || index >= chunk->constsize) {
+		return;
+	}
+	dm_chunk_emit_arg16(chunk, DM_OP_CONSTANT, index);
+}
+
+static void emit_byte(dm_chunk *chunk, uint8_t byte) {
+	if (chunk->codesize >= chunk->codecapacity) {
+		chunk->codecapacity *= 2;
+		chunk->code = realloc(chunk->code, chunk->codecapacity);
+	}
+	chunk->code[chunk->codesize++] = byte;
+}
+
+void dm_chunk_emit(dm_chunk *chunk, dm_opcode opcode) {
+	emit_byte(chunk, (uint8_t) opcode);
 }
 
 void dm_chunk_emit_arg8(dm_chunk *chunk, dm_opcode opcode, int arg8) {
