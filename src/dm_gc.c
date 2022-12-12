@@ -6,10 +6,12 @@ void dm_gc_init(dm_state *dm) {
 	dm_gc *gc = dm_state_get_gc(dm);
 	gc->first = NULL;
 	gc->last = NULL;
+	gc->in_deinit = false;
 }
 
 void dm_gc_deinit(dm_state *dm) {
 	dm_gc *gc = dm_state_get_gc(dm);
+	gc->in_deinit = true;
 	for (dm_gc_obj *obj = gc->first; obj != NULL;) {
 		dm_gc_obj *next_obj = obj->next;
 		if (obj->free != NULL) {
@@ -44,6 +46,9 @@ dm_gc_obj *dm_gc_malloc(
 
 void dm_gc_free(dm_state *dm, dm_gc_obj *obj) {
 	dm_gc *gc = dm_state_get_gc(dm);
+	if (gc->in_deinit) {
+		return;
+	}
 	if (obj->previous == NULL) {
 		gc->first = obj->next;
 	} else {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdlib.h>
+#include <stdbool.h>
 #include <dm.h>
 
 typedef struct dm_gc dm_gc;
@@ -16,6 +17,7 @@ typedef struct dm_gc_obj {
 typedef struct dm_gc {
 	dm_gc_obj *first;
 	dm_gc_obj *last;
+	bool in_deinit;
 } dm_gc;
 
 void dm_gc_init(dm_state *dm);
