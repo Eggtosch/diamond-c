@@ -77,6 +77,7 @@ int  dm_chunk_emit_jump(dm_chunk *chunk, dm_opcode opcode, int dest);
 void dm_chunk_patch_jump(dm_chunk *chunk, int addr_location);
 
 int  dm_chunk_add_var(dm_chunk *chunk, const char *name, int size);
+int  dm_chunk_find_var(dm_chunk *chunk, const char *name, int size);
 void dm_chunk_set_var(dm_chunk *chunk, int index, dm_value v);
 dm_value dm_chunk_get_var(dm_chunk *chunk, int index);
 

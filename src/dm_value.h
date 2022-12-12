@@ -41,6 +41,7 @@ typedef struct {
 	dm_gc_obj gc_header;
 	void *chunk;
 	int nargs;
+	bool takes_self;
 } dm_function;
 
 typedef struct {
@@ -64,7 +65,7 @@ dm_value dm_value_float(dm_float float_val);
 dm_value dm_value_string_len(dm_state *dm, const char *s, int size);
 dm_value dm_value_array(dm_state *dm, int capacity);
 dm_value dm_value_table(dm_state *dm, int size);
-dm_value dm_value_function(dm_state *dm, void *chunk, int nargs);
+dm_value dm_value_function(dm_state *dm, void *chunk, int nargs, bool takes_self);
 
 bool dm_value_is(dm_value v, dm_type t);
 bool dm_value_equal(dm_value v1, dm_value v2);

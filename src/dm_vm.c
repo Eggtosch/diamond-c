@@ -74,6 +74,11 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 	dm_chunk *chunk = (dm_chunk*) f.func_val->chunk;
 	chunk->ip = 0;
 
+	dm_value self = dm_value_nil();
+	if (f.func_val->takes_self && f.func_val->nargs > 0) {
+		self = dm_chunk_get_var(chunk, 0);
+	}
+
 	for (;;) {
 		uint8_t opcode = read8(chunk);
 		
@@ -175,28 +180,46 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				break;
 			}
 			case DM_OP_SELF:                {
-				stack_push(stack, dm_value_nil());
+				stack_push(stack, self);
 				break;
 			}
 			case DM_OP_CALL:                {
 				int arguments = read8(chunk);
 				dm_value func = stack_peekn(stack, arguments);
+				if (arguments != func.func_val->nargs) {
+					// error
+				}
+
 				while (arguments--) {
 					dm_chunk_set_var(func.func_val->chunk, arguments, stack_pop(stack));
 				}
 				stack_pop(stack);
+
 				dm_value ret = exec_func(dm, func, stack);
 				stack_push(stack, ret);
 				break;
 			}
 			case DM_OP_CALL_WITHPARENT:     {
 				int arguments = read8(chunk);
-				while (arguments--) {
-					stack_pop(stack);
+				dm_value func = stack_peekn(stack, arguments);
+				int normal_args_start = func.func_val->takes_self ? 1 : 0;
+				arguments += normal_args_start;
+				if (arguments != func.func_val->nargs) {
+					// error
 				}
-				stack_pop(stack); // function value
-				stack_pop(stack); // parent
-				stack_push(stack, dm_value_nil()); // result of function
+
+				while (arguments-- > normal_args_start) {
+					dm_chunk_set_var(func.func_val->chunk, arguments, stack_pop(stack));
+				}
+				stack_pop(stack);
+
+				dm_value parent = stack_pop(stack);
+				if (func.func_val->takes_self) {
+					dm_chunk_set_var(func.func_val->chunk, 0, parent);
+				}
+
+				dm_value ret = exec_func(dm, func, stack);
+				stack_push(stack, ret);
 				break;
 			}
 			case DM_OP_NEGATE:              {

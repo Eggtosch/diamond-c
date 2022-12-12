@@ -338,7 +338,10 @@ static void pident(dm_parser *parser) {
 		int ident = dm_chunk_add_var(&parser->chunk, var, len);
 		dm_chunk_emit_arg16(&parser->chunk, DM_OP_VARSET, ident);
 	} else {
-		int ident = dm_chunk_add_var(&parser->chunk, var, len);
+		int ident = dm_chunk_find_var(&parser->chunk, var, len);
+		if (ident == -1) {
+			perr_at(parser, &parser->previous, "variable does not exist!");
+		}
 		dm_chunk_emit_arg16(&parser->chunk, DM_OP_VARGET, ident);
 	}
 }
@@ -646,12 +649,18 @@ static void preturn(dm_parser *parser) {
 	dm_chunk_emit(&parser->chunk, DM_OP_RETURN);
 }
 
-static int parglist(dm_parser *parser) {
+static int parglist(dm_parser *parser, bool *takes_self) {
 	int nargs = 0;
+	*takes_self = false;
 	pconsume(parser, DM_TOKEN_LEFT_PAREN, "parameter list must start with '('");
 	if (!pcheck(parser, DM_TOKEN_RIGHT_PAREN)) {
 		do {
-			pconsume(parser, DM_TOKEN_IDENTIFIER, "function parameter must be an identifier");
+			if (nargs == 0 && pmatch(parser, DM_TOKEN_SELF)) {
+				*takes_self = true;
+			} else {
+				pconsume(parser, DM_TOKEN_IDENTIFIER, "function parameter must be an identifier");
+			}
+			dm_chunk_add_var(&parser->chunk, parser->previous.begin, parser->previous.len);
 			nargs++;
 		} while (pmatch(parser, DM_TOKEN_COMMA));
 	}
@@ -659,10 +668,10 @@ static int parglist(dm_parser *parser) {
 	return nargs;
 }
 
-static dm_value pcompiler_end(dm_parser *parser, dm_value f, int nargs) {
+static dm_value pcompiler_end(dm_parser *parser, dm_value f, int nargs, bool takes_self) {
 	dm_chunk_emit(&parser->chunk, DM_OP_RETURN);
 	if (dm_value_is(f, DM_TYPE_NIL)) {
-		f = dm_value_function(parser->dm, (void*) &parser->chunk, nargs);
+		f = dm_value_function(parser->dm, (void*) &parser->chunk, nargs, takes_self);
 	} else {
 		*(dm_chunk*) f.func_val->chunk = parser->chunk;
 		f.func_val->nargs = nargs;
@@ -679,7 +688,8 @@ static void pfunction(dm_parser *parser) {
 	dm_chunk parent_chunk = parser->chunk;
 	dm_chunk_init(&parser->chunk);
 
-	int nargs = parglist(parser);
+	bool takes_self;
+	int nargs = parglist(parser, &takes_self);
 
 	if (!pcheck(parser, DM_TOKEN_END)) {
 		pexpression(parser);
@@ -693,7 +703,7 @@ static void pfunction(dm_parser *parser) {
 
 	pconsume(parser, DM_TOKEN_END, "expect 'end' at end of function");
 
-	dm_value func = pcompiler_end(parser, dm_value_nil(), nargs);
+	dm_value func = pcompiler_end(parser, dm_value_nil(), nargs, takes_self);
 	parser->chunk = parent_chunk;
 	dm_chunk_emit_constant(&parser->chunk, func);
 	if (func_name != -1) {
@@ -733,7 +743,7 @@ int dm_compile(dm_state *dm, char *prog) {
 		return parser.had_error;
 	}
 
-	dm_state_set_main(dm, pcompiler_end(&parser, main, 0));
+	dm_state_set_main(dm, pcompiler_end(&parser, main, 0, false));
 	return parser.had_error;
 }
 

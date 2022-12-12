@@ -135,6 +135,16 @@ int dm_chunk_add_var(dm_chunk *chunk, const char *name, int size) {
 	return chunk->varsize - 1;
 }
 
+int dm_chunk_find_var(dm_chunk *chunk, const char *name, int size) {
+	for (int i = 0; i < chunk->varsize; i++) {
+		const char *try_name = chunk->vars[i].name;
+		if (strlen(try_name) == (size_t) size && strncmp(try_name, name, size) == 0) {
+			return i;
+		}
+	}
+	return -1;
+}
+
 void dm_chunk_set_var(dm_chunk *chunk, int index, dm_value v) {
 	if (index < 0 || index >= chunk->varsize) {
 		return;

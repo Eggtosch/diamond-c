@@ -133,11 +133,12 @@ static void function_free(dm_state *dm, struct dm_gc_obj *obj) {
 	free(func->chunk);
 }
 
-dm_value dm_value_function(dm_state *dm, void *chunk, int nargs) {
+dm_value dm_value_function(dm_state *dm, void *chunk, int nargs, bool takes_self) {
 	dm_function *func = (dm_function*) dm_gc_malloc(dm, sizeof(dm_function), NULL, function_free);
 	func->chunk = malloc(sizeof(dm_chunk));
 	memcpy(func->chunk, chunk, sizeof(dm_chunk));
 	func->nargs = nargs;
+	func->takes_self = takes_self;
 	return (dm_value){DM_TYPE_FUNCTION, {.func_val = func}};
 }
 
