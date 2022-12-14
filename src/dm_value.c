@@ -248,6 +248,11 @@ bool dm_value_is_gc_obj(dm_value v) {
 		|| v.type == DM_TYPE_FUNCTION;
 }
 
+const char *dm_value_type_str(dm_value v) {
+	static const char *types[] = {"nil", "bool", "integer", "float", "string", "array", "table", "function"};
+	return types[v.type];
+}
+
 void dm_value_array_set(dm_value a, dm_value index, dm_value v) {
 	if (!dm_value_is(a, DM_TYPE_ARRAY)) {
 		// error

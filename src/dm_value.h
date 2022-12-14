@@ -71,6 +71,7 @@ bool dm_value_is(dm_value v, dm_type t);
 bool dm_value_equal(dm_value v1, dm_value v2);
 void dm_value_inspect(dm_value v);
 bool dm_value_is_gc_obj(dm_value v);
+const char *dm_value_type_str(dm_value v);
 
 void dm_value_array_set(dm_value a, dm_value index, dm_value v);
 dm_value dm_value_array_get(dm_value a, dm_value index);

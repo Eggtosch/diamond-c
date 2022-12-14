@@ -1,5 +1,8 @@
+#define __STDC_WANT_LIB_EXT2__ 1
+#define _GNU_SOURCE
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdarg.h>
 
 #include <dm_vm.h>
 #include <dm_compiler.h>
@@ -70,6 +73,27 @@ static bool is_falsey(dm_value val) {
 	return dm_value_is(val, DM_TYPE_NIL) || (dm_value_is(val, DM_TYPE_BOOL) && val.bool_val == false);
 }
 
+static dm_value runtime_error(dm_state *dm, const char *message, ...) {
+	char *fmt;
+	va_list args;
+	
+	va_start(args, message);
+	vasprintf(&fmt, message, args);
+	
+	dm_state_set_error(dm, fmt);
+	
+	free(fmt);
+	va_end(args);
+	return dm_value_nil();
+}
+
+static dm_value print_backtrace(dm_value f) {
+	printf("    in ");
+	dm_value_inspect(f);
+	printf("\n");
+	return dm_value_nil();
+}
+
 static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 	dm_chunk *chunk = (dm_chunk*) f.func_val->chunk;
 	chunk->ip = 0;
@@ -104,7 +128,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				} else if (dm_value_is(table, DM_TYPE_TABLE)) {
 					dm_value_table_set(table, field, v);
 				} else {
-					// error
+					runtime_error(dm, "Can't set field of <%s>, expected <array> or <table>", dm_value_type_str(field));
 				}
 				stack_push(stack, v);
 				break;
@@ -118,7 +142,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				} else if (dm_value_is(table, DM_TYPE_TABLE)) {
 					v = dm_value_table_get(table, field);
 				} else {
-					// error
+					return runtime_error(dm, "Can't get field of <%s>, expected <array> or <table>", dm_value_type_str(field));
 				}
 				stack_push(stack, v);
 				break;
@@ -132,7 +156,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				} else if (dm_value_is(table, DM_TYPE_TABLE)) {
 					v = dm_value_table_get(table, field);
 				} else {
-					// error
+					return runtime_error(dm, "Can't get field of <%s>, expected <array> or <table>", dm_value_type_str(field));
 				}
 				stack_push(stack, v);
 				break;
@@ -187,7 +211,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				int arguments = read8(chunk);
 				dm_value func = stack_peekn(stack, arguments);
 				if (arguments != func.func_val->nargs) {
-					// error
+					return runtime_error(dm, "expected %d args, but %d args given", func.func_val->nargs, arguments);
 				}
 
 				while (arguments--) {
@@ -196,6 +220,9 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				stack_pop(stack);
 
 				dm_value ret = exec_func(dm, func, stack);
+				if (dm_state_has_error(dm)) {
+					return print_backtrace(f);
+				}
 				stack_push(stack, ret);
 				break;
 			}
@@ -205,7 +232,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				int normal_args_start = func.func_val->takes_self ? 1 : 0;
 				arguments += normal_args_start;
 				if (arguments != func.func_val->nargs) {
-					// error
+					return runtime_error(dm, "expected %d args, but %d args given", func.func_val->nargs, arguments);
 				}
 
 				while (arguments-- > normal_args_start) {
@@ -219,6 +246,9 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				}
 
 				dm_value ret = exec_func(dm, func, stack);
+				if (dm_state_has_error(dm)) {
+					return print_backtrace(f);
+				}
 				stack_push(stack, ret);
 				break;
 			}
@@ -379,6 +409,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 }
 
 dm_value dm_vm_exec(dm_state *dm, char *prog) {
+	dm_state_set_error(dm, NULL);
 	if (dm_compile(dm, prog) != 0) {
 		return dm_value_nil();
 	}
