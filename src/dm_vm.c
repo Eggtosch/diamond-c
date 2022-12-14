@@ -119,6 +119,20 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				stack_push(stack, v);
 				break;
 			}
+			case DM_OP_VARGET_UP:           {
+				int ups = read8(chunk);
+				int index = read16(chunk);
+				dm_chunk *upchunk = chunk;
+				for (int i = 0; i < ups; i++) {
+					upchunk = (dm_chunk*) upchunk->parent;
+					if (upchunk == NULL) {
+						return runtime_error(dm, "Can't get upvalue from up chunk %d", ups);
+					}
+				}
+				dm_value v = dm_chunk_get_var(upchunk, index);
+				stack_push(stack, v);
+				break;
+			}
 			case DM_OP_FIELDSET:            {
 				dm_value v = stack_pop(stack);
 				dm_value field = stack_pop(stack);

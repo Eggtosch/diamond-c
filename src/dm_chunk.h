@@ -6,6 +6,7 @@
 typedef enum {
 	DM_OP_VARSET,               // op8 index16 | [value] -> [value]
 	DM_OP_VARGET,               // op8 index16 | [] -> [value]
+	DM_OP_VARGET_UP,			// op8 up8 index16 | [] -> [value]
 	DM_OP_FIELDSET,             // op8 | [table, field, value] -> [value]
 	DM_OP_FIELDGET,             // op8 | [table, field] -> [value]
 	DM_OP_FIELDGET_PUSHPARENT,  // op8 | [table, field] -> [table, value]
@@ -51,6 +52,7 @@ struct variable {
 };
 
 typedef struct {
+	struct dm_chunk *parent;
 	int codesize;
 	int codecapacity;
 	uint8_t *code;
@@ -65,6 +67,7 @@ typedef struct {
 
 void dm_chunk_init(dm_chunk *chunk);
 void dm_chunk_free(dm_chunk *chunk);
+void dm_chunk_set_parent(dm_chunk *chunk, dm_chunk *parent);
 void dm_chunk_reset_code(dm_chunk *chunk);
 
 int  dm_chunk_current_address(dm_chunk *chunk);
@@ -76,6 +79,7 @@ void dm_chunk_emit_constant_i(dm_chunk *chunk, int index);
 void dm_chunk_emit(dm_chunk *chunk, dm_opcode opcode);
 void dm_chunk_emit_arg8(dm_chunk *chunk, dm_opcode opcode, int arg8);
 void dm_chunk_emit_arg16(dm_chunk *chunk, dm_opcode opcode, int arg16);
+void dm_chunk_emit_arg8_arg16(dm_chunk *chunk, dm_opcode opcode, int arg8, int arg16);
 int  dm_chunk_emit_jump(dm_chunk *chunk, dm_opcode opcode, int dest);
 void dm_chunk_patch_jump(dm_chunk *chunk, int addr_location);
 

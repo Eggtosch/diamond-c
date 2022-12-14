@@ -4,7 +4,7 @@
 #include <dm_chunk.h>
 
 void dm_chunk_init(dm_chunk *chunk) {
-	*chunk = (dm_chunk){0, 0, NULL, 0, 0, 0, NULL, 0, 0, NULL};
+	*chunk = (dm_chunk){NULL, 0, 0, NULL, 0, 0, 0, NULL, 0, 0, NULL};
 	chunk->codecapacity = 128;
 	chunk->code = malloc(chunk->codecapacity);
 	chunk->constcapacity = 4;
@@ -32,6 +32,10 @@ void dm_chunk_free(dm_chunk *chunk) {
 	chunk->varsize = 0;
 	chunk->varcapacity = 0;
 	chunk->ip = 0;
+}
+
+void dm_chunk_set_parent(dm_chunk *chunk, dm_chunk *parent) {
+	chunk->parent = (struct dm_chunk*) parent;
 }
 
 void dm_chunk_reset_code(dm_chunk *chunk) {
@@ -112,6 +116,17 @@ void dm_chunk_emit_arg16(dm_chunk *chunk, dm_opcode opcode, int arg16) {
 	emit_byte(chunk, arg & 0xff);
 }
 
+void dm_chunk_emit_arg8_arg16(dm_chunk *chunk, dm_opcode opcode, int arg8, int arg16) {
+	if (arg8 >= 1 << 8 || arg16 >= 1 << 16) {
+		return;
+	}
+
+	emit_byte(chunk, (uint8_t) opcode);
+	emit_byte(chunk, (uint8_t) arg8);
+	emit_byte(chunk, (uint16_t) arg16 >> 8);
+	emit_byte(chunk, (uint16_t) arg16 & 0xff);
+}
+
 int dm_chunk_emit_jump(dm_chunk *chunk, dm_opcode opcode, int dest) {
 	if (dest >= 1 << 16) {
 		return 0;
@@ -184,6 +199,7 @@ static int decompile_op(uint8_t *code) {
 	switch (opcode) {
 		case DM_OP_VARSET:				printf("VARSET %d\n", code[1] << 8 | code[2]); return 3;
 		case DM_OP_VARGET:				printf("VARGET %d\n", code[1] << 8 | code[2]); return 3;
+		case DM_OP_VARGET_UP:			printf("VARGET_UP (%d) %d\n", code[1], code[2] << 8 | code[3]); return 4;
 		case DM_OP_FIELDSET:			printf("FIELDSET\n"); return 1;
 		case DM_OP_FIELDGET:			printf("FIELDGET\n"); return 1;
 		case DM_OP_FIELDGET_PUSHPARENT:	printf("FIELDGET_PUSHPARENT\n"); return 1;

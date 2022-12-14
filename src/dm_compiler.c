@@ -224,7 +224,7 @@ dm_token lex(dm_lexer *lexer) {
 typedef struct dm_parser {
 	dm_state *dm;
 	dm_lexer *lexer;
-	dm_chunk chunk;
+	dm_chunk *chunk;
 	dm_token current;
 	dm_token previous;
 	bool had_error;
@@ -335,14 +335,28 @@ static void pident(dm_parser *parser) {
 	int len = parser->previous.len;
 	if (pmatch(parser, DM_TOKEN_EQUAL)) {
 		pexpression(parser);
-		int ident = dm_chunk_add_var(&parser->chunk, var, len);
-		dm_chunk_emit_arg16(&parser->chunk, DM_OP_VARSET, ident);
+		int ident = dm_chunk_add_var(parser->chunk, var, len);
+		dm_chunk_emit_arg16(parser->chunk, DM_OP_VARSET, ident);
 	} else {
-		int ident = dm_chunk_find_var(&parser->chunk, var, len);
-		if (ident == -1) {
+		dm_chunk *chunk = parser->chunk;
+		int ups = 0;
+		int index = -1;
+		while (chunk != NULL) {
+			index = dm_chunk_find_var(chunk, var, len);
+			if (index != -1) {
+				break;
+			}
+			ups++;
+			chunk = (dm_chunk*) chunk->parent;
+		}
+		if (index == -1) {
 			perr_at(parser, &parser->previous, "variable does not exist!");
 		}
-		dm_chunk_emit_arg16(&parser->chunk, DM_OP_VARGET, ident);
+		if (ups == 0) {
+			dm_chunk_emit_arg16(parser->chunk, DM_OP_VARGET, index);
+		} else {
+			dm_chunk_emit_arg8_arg16(parser->chunk, DM_OP_VARGET_UP, ups, index);
+		}
 	}
 }
 
@@ -355,7 +369,7 @@ static void parraylit(dm_parser *parser) {
 		} while (pmatch(parser, DM_TOKEN_COMMA));
 	}
 	pconsume(parser, DM_TOKEN_RIGHT_BRACKET, "expect ']'");
-	dm_chunk_emit_arg16(&parser->chunk, DM_OP_ARRAYLIT, nelems);
+	dm_chunk_emit_arg16(parser->chunk, DM_OP_ARRAYLIT, nelems);
 }
 
 static void parrayget(dm_parser *parser) {
@@ -363,9 +377,9 @@ static void parrayget(dm_parser *parser) {
 	pconsume(parser, DM_TOKEN_RIGHT_BRACKET, "expect ']'");
 	if (pmatch(parser, DM_TOKEN_EQUAL)) {
 		pexpression(parser);
-		dm_chunk_emit(&parser->chunk, DM_OP_FIELDSET);
+		dm_chunk_emit(parser->chunk, DM_OP_FIELDSET);
 	} else {
-		dm_chunk_emit(&parser->chunk, DM_OP_FIELDGET);
+		dm_chunk_emit(parser->chunk, DM_OP_FIELDGET);
 	}
 }
 
@@ -380,43 +394,43 @@ static void ptablelit(dm_parser *parser) {
 		} while (pmatch(parser, DM_TOKEN_COMMA));
 	}
 	pconsume(parser, DM_TOKEN_RIGHT_BRACE, "expect '}'");
-	dm_chunk_emit_arg16(&parser->chunk, DM_OP_TABLELIT, nelems);
+	dm_chunk_emit_arg16(parser->chunk, DM_OP_TABLELIT, nelems);
 }
 
 static void pstring(dm_parser *parser) {
 	const char *s = parser->previous.begin + 1;
 	int len = parser->previous.len - 2;
-	dm_chunk_emit_constant(&parser->chunk, dm_value_string_len(parser->dm, s, len));
+	dm_chunk_emit_constant(parser->chunk, dm_value_string_len(parser->dm, s, len));
 }
 
 static void pinteger(dm_parser *parser) {
 	long value = strtol(parser->previous.begin, NULL, 10);
 	if (value <= UINT16_MAX) {
-		dm_chunk_emit_arg16(&parser->chunk, DM_OP_CONSTANT_SMALLINT, value);
+		dm_chunk_emit_arg16(parser->chunk, DM_OP_CONSTANT_SMALLINT, value);
 	} else {
-		dm_chunk_emit_constant(&parser->chunk, dm_value_int(value));
+		dm_chunk_emit_constant(parser->chunk, dm_value_int(value));
 	}
 }
 
 static void pfloating(dm_parser *parser) {
 	double value = strtod(parser->previous.begin, NULL);
-	dm_chunk_emit_constant(&parser->chunk, dm_value_float(value));
+	dm_chunk_emit_constant(parser->chunk, dm_value_float(value));
 }
 
 static void pboolean(dm_parser *parser) {
 	if (parser->previous.type == DM_TOKEN_TRUE) {
-		dm_chunk_emit(&parser->chunk, DM_OP_TRUE);
+		dm_chunk_emit(parser->chunk, DM_OP_TRUE);
 	} else {
-		dm_chunk_emit(&parser->chunk, DM_OP_FALSE);
+		dm_chunk_emit(parser->chunk, DM_OP_FALSE);
 	}
 }
 
 static void pnil(dm_parser *parser) {
-	dm_chunk_emit(&parser->chunk, DM_OP_NIL);
+	dm_chunk_emit(parser->chunk, DM_OP_NIL);
 }
 
 static void pself(dm_parser *parser) {
-	dm_chunk_emit(&parser->chunk, DM_OP_SELF);
+	dm_chunk_emit(parser->chunk, DM_OP_SELF);
 }
 
 static void pgrouping(dm_parser *parser) {
@@ -438,12 +452,12 @@ static int pparlist(dm_parser *parser) {
 
 static void pcall(dm_parser *parser) {
 	int nparams = pparlist(parser);
-	dm_chunk_emit_arg8(&parser->chunk, DM_OP_CALL, nparams);
+	dm_chunk_emit_arg8(parser->chunk, DM_OP_CALL, nparams);
 }
 
 static void pcall_with_parent(dm_parser *parser) {
 	int nparams = pparlist(parser);
-	dm_chunk_emit_arg8(&parser->chunk, DM_OP_CALL_WITHPARENT, nparams);
+	dm_chunk_emit_arg8(parser->chunk, DM_OP_CALL_WITHPARENT, nparams);
 }
 
 static void pdot(dm_parser *parser) {
@@ -453,21 +467,21 @@ static void pdot(dm_parser *parser) {
 
 	const char *var = parser->previous.begin;
 	int len = parser->previous.len;
-	int index = dm_chunk_index_of_string_constant(&parser->chunk, var, len);
+	int index = dm_chunk_index_of_string_constant(parser->chunk, var, len);
 	if (index == -1) {
-		dm_chunk_emit_constant(&parser->chunk, dm_value_string_len(parser->dm, var, len));
+		dm_chunk_emit_constant(parser->chunk, dm_value_string_len(parser->dm, var, len));
 	} else {
-		dm_chunk_emit_constant_i(&parser->chunk, index);
+		dm_chunk_emit_constant_i(parser->chunk, index);
 	}
 
 	if (pmatch(parser, DM_TOKEN_EQUAL)) {
 		pexpression(parser);
-		dm_chunk_emit(&parser->chunk, DM_OP_FIELDSET);
+		dm_chunk_emit(parser->chunk, DM_OP_FIELDSET);
 	} else if (pmatch(parser, DM_TOKEN_LEFT_PAREN)) {
-		dm_chunk_emit(&parser->chunk, DM_OP_FIELDGET_PUSHPARENT);
+		dm_chunk_emit(parser->chunk, DM_OP_FIELDGET_PUSHPARENT);
 		pcall_with_parent(parser);
 	} else {
-		dm_chunk_emit(&parser->chunk, DM_OP_FIELDGET);
+		dm_chunk_emit(parser->chunk, DM_OP_FIELDGET);
 	}
 }
 
@@ -479,23 +493,23 @@ static void punary(dm_parser *parser) {
 	dm_tokentype optype = parser->previous.type;
 	pparse_precedence(parser, DM_PREC_UNARY);
 	switch (optype) {
-		case DM_TOKEN_MINUS: dm_chunk_emit(&parser->chunk, DM_OP_NEGATE); break;
+		case DM_TOKEN_MINUS: dm_chunk_emit(parser->chunk, DM_OP_NEGATE); break;
 		case DM_TOKEN_BANG:
-		case DM_TOKEN_NOT:   dm_chunk_emit(&parser->chunk, DM_OP_NOT); break;
+		case DM_TOKEN_NOT:   dm_chunk_emit(parser->chunk, DM_OP_NOT); break;
 		default: return;
 	}
 }
 
 static void pand(dm_parser *parser) {
-	int jump_if_false_patch = dm_chunk_emit_jump(&parser->chunk, DM_OP_JUMP_IF_FALSE_OR_POP, 0);
+	int jump_if_false_patch = dm_chunk_emit_jump(parser->chunk, DM_OP_JUMP_IF_FALSE_OR_POP, 0);
 	pexpression(parser);
-	dm_chunk_patch_jump(&parser->chunk, jump_if_false_patch);
+	dm_chunk_patch_jump(parser->chunk, jump_if_false_patch);
 }
 
 static void por(dm_parser *parser) {
-	int jump_if_false_patch = dm_chunk_emit_jump(&parser->chunk, DM_OP_JUMP_IF_TRUE_OR_POP, 0);
+	int jump_if_false_patch = dm_chunk_emit_jump(parser->chunk, DM_OP_JUMP_IF_TRUE_OR_POP, 0);
 	pexpression(parser);
-	dm_chunk_patch_jump(&parser->chunk, jump_if_false_patch);
+	dm_chunk_patch_jump(parser->chunk, jump_if_false_patch);
 }
 
 static void pbinary(dm_parser *parser) {
@@ -504,16 +518,16 @@ static void pbinary(dm_parser *parser) {
 	pparse_precedence(parser, (dm_precedence)(rule->precedence + 1));
 
 	switch (optype) {
-		case DM_TOKEN_PLUS:          dm_chunk_emit(&parser->chunk, DM_OP_PLUS);         break;
-		case DM_TOKEN_MINUS:         dm_chunk_emit(&parser->chunk, DM_OP_MINUS);        break;
-		case DM_TOKEN_STAR:          dm_chunk_emit(&parser->chunk, DM_OP_MUL);          break;
-		case DM_TOKEN_SLASH:         dm_chunk_emit(&parser->chunk, DM_OP_DIV);          break;
-		case DM_TOKEN_BANG_EQUAL:    dm_chunk_emit(&parser->chunk, DM_OP_NOTEQUAL);     break;
-		case DM_TOKEN_EQUAL_EQUAL:   dm_chunk_emit(&parser->chunk, DM_OP_EQUAL);        break;
-		case DM_TOKEN_LESS:          dm_chunk_emit(&parser->chunk, DM_OP_LESS);         break;
-		case DM_TOKEN_LESS_EQUAL:    dm_chunk_emit(&parser->chunk, DM_OP_LESSEQUAL);    break;
-		case DM_TOKEN_GREATER:       dm_chunk_emit(&parser->chunk, DM_OP_GREATER);      break;
-		case DM_TOKEN_GREATER_EQUAL: dm_chunk_emit(&parser->chunk, DM_OP_GREATEREQUAL); break;
+		case DM_TOKEN_PLUS:          dm_chunk_emit(parser->chunk, DM_OP_PLUS);         break;
+		case DM_TOKEN_MINUS:         dm_chunk_emit(parser->chunk, DM_OP_MINUS);        break;
+		case DM_TOKEN_STAR:          dm_chunk_emit(parser->chunk, DM_OP_MUL);          break;
+		case DM_TOKEN_SLASH:         dm_chunk_emit(parser->chunk, DM_OP_DIV);          break;
+		case DM_TOKEN_BANG_EQUAL:    dm_chunk_emit(parser->chunk, DM_OP_NOTEQUAL);     break;
+		case DM_TOKEN_EQUAL_EQUAL:   dm_chunk_emit(parser->chunk, DM_OP_EQUAL);        break;
+		case DM_TOKEN_LESS:          dm_chunk_emit(parser->chunk, DM_OP_LESS);         break;
+		case DM_TOKEN_LESS_EQUAL:    dm_chunk_emit(parser->chunk, DM_OP_LESSEQUAL);    break;
+		case DM_TOKEN_GREATER:       dm_chunk_emit(parser->chunk, DM_OP_GREATER);      break;
+		case DM_TOKEN_GREATER_EQUAL: dm_chunk_emit(parser->chunk, DM_OP_GREATEREQUAL); break;
 		default: return;
 	}
 }
@@ -528,7 +542,7 @@ static int pelsif(dm_parser *parser) {
 	pexpression(parser);
 	pconsume(parser, DM_TOKEN_THEN, "expect 'then' after if expression");
 
-	int jump_if_false_patch = dm_chunk_emit_jump(&parser->chunk, DM_OP_JUMP_IF_FALSE, 0);
+	int jump_if_false_patch = dm_chunk_emit_jump(parser->chunk, DM_OP_JUMP_IF_FALSE, 0);
 
 	if (!pis_end_of_if_body(parser)) {
 		pexpression(parser);
@@ -536,19 +550,19 @@ static int pelsif(dm_parser *parser) {
 			if (pmatch(parser, DM_TOKEN_SEMICOLON)) {
 				continue;
 			}
-			dm_chunk_emit(&parser->chunk, DM_OP_POP);
+			dm_chunk_emit(parser->chunk, DM_OP_POP);
 			pexpression(parser);
 		}
 	} else {
-		dm_chunk_emit(&parser->chunk, DM_OP_NIL);
+		dm_chunk_emit(parser->chunk, DM_OP_NIL);
 	}
 
-	int jump_end_patch = dm_chunk_emit_jump(&parser->chunk, DM_OP_JUMP, 0);
-	dm_chunk_patch_jump(&parser->chunk, jump_if_false_patch);
+	int jump_end_patch = dm_chunk_emit_jump(parser->chunk, DM_OP_JUMP, 0);
+	dm_chunk_patch_jump(parser->chunk, jump_if_false_patch);
 
 	if (pmatch(parser, DM_TOKEN_END)) {
-		jump_to_end_addr = dm_chunk_current_address(&parser->chunk);
-		dm_chunk_emit(&parser->chunk, DM_OP_NIL);
+		jump_to_end_addr = dm_chunk_current_address(parser->chunk);
+		dm_chunk_emit(parser->chunk, DM_OP_NIL);
 	} else if (pmatch(parser, DM_TOKEN_ELSE)) {
 		if (!pmatch(parser, DM_TOKEN_END)) {
 			pexpression(parser);
@@ -556,20 +570,20 @@ static int pelsif(dm_parser *parser) {
 				if (pmatch(parser, DM_TOKEN_SEMICOLON)) {
 					continue;
 				}
-				dm_chunk_emit(&parser->chunk, DM_OP_POP);
+				dm_chunk_emit(parser->chunk, DM_OP_POP);
 				pexpression(parser);
 			}
 		} else {
-			dm_chunk_emit(&parser->chunk, DM_OP_NIL);
+			dm_chunk_emit(parser->chunk, DM_OP_NIL);
 		}
-		jump_to_end_addr = dm_chunk_current_address(&parser->chunk);
+		jump_to_end_addr = dm_chunk_current_address(parser->chunk);
 	} else if (pmatch(parser, DM_TOKEN_ELSIF)) {
 		jump_to_end_addr = pelsif(parser);
 	} else {
 		jump_to_end_addr = 0;
 	}
 
-	dm_chunk_patch_jump(&parser->chunk, jump_end_patch);
+	dm_chunk_patch_jump(parser->chunk, jump_end_patch);
 
 	return jump_to_end_addr;
 }
@@ -579,79 +593,79 @@ static void pif(dm_parser *parser) {
 }
 
 static void pwhile(dm_parser *parser) {
-	dm_chunk_emit(&parser->chunk, DM_OP_NIL);
-	int loop_start_addr = dm_chunk_current_address(&parser->chunk);
+	dm_chunk_emit(parser->chunk, DM_OP_NIL);
+	int loop_start_addr = dm_chunk_current_address(parser->chunk);
 	pexpression(parser);
 	pconsume(parser, DM_TOKEN_DO, "expect 'do' after while expression");
 
-	int jump_if_false_patch = dm_chunk_emit_jump(&parser->chunk, DM_OP_JUMP_IF_FALSE, 0);
+	int jump_if_false_patch = dm_chunk_emit_jump(parser->chunk, DM_OP_JUMP_IF_FALSE, 0);
 
 	while (!pcheck(parser, DM_TOKEN_END) && !pcheck(parser, DM_TOKEN_EOF)) {
 		if (pmatch(parser, DM_TOKEN_SEMICOLON)) {
 			continue;
 		} else if (pmatch(parser, DM_TOKEN_NEXT)) {
-			dm_chunk_emit_jump(&parser->chunk, DM_OP_JUMP, loop_start_addr);
+			dm_chunk_emit_jump(parser->chunk, DM_OP_JUMP, loop_start_addr);
 		} else if (pmatch(parser, DM_TOKEN_BREAK)) {
-			dm_chunk_emit(&parser->chunk, DM_OP_FALSE);
-			dm_chunk_emit_jump(&parser->chunk, DM_OP_JUMP_IF_FALSE, jump_if_false_patch);
+			dm_chunk_emit(parser->chunk, DM_OP_FALSE);
+			dm_chunk_emit_jump(parser->chunk, DM_OP_JUMP_IF_FALSE, jump_if_false_patch);
 		} else {
-			dm_chunk_emit(&parser->chunk, DM_OP_POP);
+			dm_chunk_emit(parser->chunk, DM_OP_POP);
 			pexpression(parser);
 		}
 	}
 
 	pconsume(parser, DM_TOKEN_END, "expect end after while block");
 
-	dm_chunk_emit_jump(&parser->chunk, DM_OP_JUMP, loop_start_addr);
-	dm_chunk_patch_jump(&parser->chunk, jump_if_false_patch);
+	dm_chunk_emit_jump(parser->chunk, DM_OP_JUMP, loop_start_addr);
+	dm_chunk_patch_jump(parser->chunk, jump_if_false_patch);
 }
 
 static void pfor(dm_parser *parser) {
 	pexpression(parser);
 	pconsume(parser, DM_TOKEN_COMMA, "expect ',' after init expression");
-	int loop_start_addr = dm_chunk_current_address(&parser->chunk);
+	int loop_start_addr = dm_chunk_current_address(parser->chunk);
 
 	pexpression(parser);
 	pconsume(parser, DM_TOKEN_COMMA, "expect ',' after condition expression");
 
-	int jump_if_false_patch = dm_chunk_emit_jump(&parser->chunk, DM_OP_JUMP_IF_FALSE, 0);
-	int loop_body_patch = dm_chunk_emit_jump(&parser->chunk, DM_OP_JUMP, 0);
+	int jump_if_false_patch = dm_chunk_emit_jump(parser->chunk, DM_OP_JUMP_IF_FALSE, 0);
+	int loop_body_patch = dm_chunk_emit_jump(parser->chunk, DM_OP_JUMP, 0);
 
-	int update_addr = dm_chunk_current_address(&parser->chunk);
+	int update_addr = dm_chunk_current_address(parser->chunk);
 	pexpression(parser);
-	dm_chunk_emit(&parser->chunk, DM_OP_POP);
+	dm_chunk_emit(parser->chunk, DM_OP_POP);
 	pconsume(parser, DM_TOKEN_DO, "expect do in for expression");
-	dm_chunk_emit_jump(&parser->chunk, DM_OP_JUMP, loop_start_addr);
+	dm_chunk_emit_jump(parser->chunk, DM_OP_JUMP, loop_start_addr);
 
-	dm_chunk_patch_jump(&parser->chunk, loop_body_patch);
+	dm_chunk_patch_jump(parser->chunk, loop_body_patch);
 	while (!pcheck(parser, DM_TOKEN_END) && !pcheck(parser, DM_TOKEN_EOF)) {
 		if (pmatch(parser, DM_TOKEN_SEMICOLON)) {
 			continue;
 		} else if (pmatch(parser, DM_TOKEN_NEXT)) {
-			dm_chunk_emit_jump(&parser->chunk, DM_OP_JUMP, update_addr);
+			dm_chunk_emit_jump(parser->chunk, DM_OP_JUMP, update_addr);
 		} else if (pmatch(parser, DM_TOKEN_BREAK)) {
-			dm_chunk_emit(&parser->chunk, DM_OP_FALSE);
-			dm_chunk_emit_jump(&parser->chunk, DM_OP_JUMP, jump_if_false_patch);
+			dm_chunk_emit(parser->chunk, DM_OP_FALSE);
+			dm_chunk_emit_jump(parser->chunk, DM_OP_JUMP, jump_if_false_patch);
 		} else {
-			dm_chunk_emit(&parser->chunk, DM_OP_POP);
+			dm_chunk_emit(parser->chunk, DM_OP_POP);
 			pexpression(parser);
 		}
 	}
 
 	pconsume(parser, DM_TOKEN_END, "expect end after for block");
 
-	dm_chunk_emit_jump(&parser->chunk, DM_OP_JUMP, update_addr);
-	dm_chunk_patch_jump(&parser->chunk, jump_if_false_patch);
+	dm_chunk_emit_jump(parser->chunk, DM_OP_JUMP, update_addr);
+	dm_chunk_patch_jump(parser->chunk, jump_if_false_patch);
 }
 
 static void preturn(dm_parser *parser) {
 	if (pcheck(parser, DM_TOKEN_END) || pcheck(parser, DM_TOKEN_ELSIF) || pcheck(parser, DM_TOKEN_ELSE) ||
 		pmatch(parser, DM_TOKEN_SEMICOLON) || pmatch(parser, DM_TOKEN_EOF)) {
-		dm_chunk_emit(&parser->chunk, DM_OP_NIL);
+		dm_chunk_emit(parser->chunk, DM_OP_NIL);
 	} else {
 		pexpression(parser);
 	}
-	dm_chunk_emit(&parser->chunk, DM_OP_RETURN);
+	dm_chunk_emit(parser->chunk, DM_OP_RETURN);
 }
 
 static int parglist(dm_parser *parser, bool *takes_self) {
@@ -665,7 +679,7 @@ static int parglist(dm_parser *parser, bool *takes_self) {
 			} else {
 				pconsume(parser, DM_TOKEN_IDENTIFIER, "function parameter must be an identifier");
 			}
-			dm_chunk_add_var(&parser->chunk, parser->previous.begin, parser->previous.len);
+			dm_chunk_add_var(parser->chunk, parser->previous.begin, parser->previous.len);
 			nargs++;
 		} while (pmatch(parser, DM_TOKEN_COMMA));
 	}
@@ -674,12 +688,13 @@ static int parglist(dm_parser *parser, bool *takes_self) {
 }
 
 static dm_value pcompiler_end(dm_parser *parser, dm_value f, int nargs, bool takes_self) {
-	dm_chunk_emit(&parser->chunk, DM_OP_RETURN);
+	dm_chunk_emit(parser->chunk, DM_OP_RETURN);
 	if (dm_value_is(f, DM_TYPE_NIL)) {
-		f = dm_value_function(parser->dm, (void*) &parser->chunk, nargs, takes_self);
+		f = dm_value_function(parser->dm, parser->chunk, nargs, takes_self);
 	} else {
-		*(dm_chunk*) f.func_val->chunk = parser->chunk;
+		f.func_val->chunk = parser->chunk;
 		f.func_val->nargs = nargs;
+		f.func_val->takes_self = takes_self;
 	}
 	return f;
 }
@@ -687,11 +702,13 @@ static dm_value pcompiler_end(dm_parser *parser, dm_value f, int nargs, bool tak
 static void pfunction(dm_parser *parser) {
 	int func_name = -1;
 	if (pmatch(parser, DM_TOKEN_IDENTIFIER)) {
-		func_name = dm_chunk_add_var(&parser->chunk, parser->previous.begin, parser->previous.len);
+		func_name = dm_chunk_add_var(parser->chunk, parser->previous.begin, parser->previous.len);
 	}
 
-	dm_chunk parent_chunk = parser->chunk;
-	dm_chunk_init(&parser->chunk);
+	dm_chunk *parent_chunk = parser->chunk;
+	parser->chunk = malloc(sizeof(dm_chunk));
+	dm_chunk_init(parser->chunk);
+	dm_chunk_set_parent(parser->chunk, parent_chunk);
 
 	bool takes_self;
 	int nargs = parglist(parser, &takes_self);
@@ -699,34 +716,35 @@ static void pfunction(dm_parser *parser) {
 	if (!pcheck(parser, DM_TOKEN_END)) {
 		pexpression(parser);
 		while (!pcheck(parser, DM_TOKEN_END) && !pcheck(parser, DM_TOKEN_EOF)) {
-			dm_chunk_emit(&parser->chunk, DM_OP_POP);
+			dm_chunk_emit(parser->chunk, DM_OP_POP);
 			pexpression(parser);
 		}
 	} else {
-		dm_chunk_emit(&parser->chunk, DM_OP_NIL);
+		dm_chunk_emit(parser->chunk, DM_OP_NIL);
 	}
 
 	pconsume(parser, DM_TOKEN_END, "expect 'end' at end of function");
 
 	dm_value func = pcompiler_end(parser, dm_value_nil(), nargs, takes_self);
 	parser->chunk = parent_chunk;
-	dm_chunk_emit_constant(&parser->chunk, func);
+	dm_chunk_emit_constant(parser->chunk, func);
 	if (func_name != -1) {
-		dm_chunk_emit_arg16(&parser->chunk, DM_OP_VARSET, func_name);
+		dm_chunk_emit_arg16(parser->chunk, DM_OP_VARSET, func_name);
 	}
 }
 
 
 int dm_compile(dm_state *dm, char *prog) {
 	dm_lexer lexer = {prog, prog, 1};
-	dm_parser parser = {dm, &lexer, {}, {}, {}, false, false};
+	dm_parser parser = {dm, &lexer, NULL, {}, {}, false, false};
 
 	dm_value main = *(dm_value*) dm_state_get_main(dm);
 	if (dm_value_is(main, DM_TYPE_NIL)) {
-		dm_chunk_init(&parser.chunk);
+		parser.chunk = malloc(sizeof(dm_chunk));
+		dm_chunk_init(parser.chunk);
 	} else {
-		parser.chunk = *(dm_chunk*) main.func_val->chunk;
-		dm_chunk_reset_code(&parser.chunk);
+		parser.chunk = (dm_chunk*) main.func_val->chunk;
+		dm_chunk_reset_code(parser.chunk);
 	}
 
 	pnext(&parser);
@@ -737,11 +755,11 @@ int dm_compile(dm_state *dm, char *prog) {
 			if (pmatch(&parser, DM_TOKEN_SEMICOLON)) {
 				continue;
 			}
-			dm_chunk_emit(&parser.chunk, DM_OP_POP);
+			dm_chunk_emit(parser.chunk, DM_OP_POP);
 			pexpression(&parser);
 		}
 	} else {
-		dm_chunk_emit(&parser.chunk, DM_OP_NIL);
+		dm_chunk_emit(parser.chunk, DM_OP_NIL);
 	}
 
 	if (parser.had_error) {
