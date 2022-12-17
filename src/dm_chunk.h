@@ -56,7 +56,7 @@ typedef struct {
 	int codesize;
 	int codecapacity;
 	uint8_t *code;
-	uint64_t ip;
+	uint32_t ip;
 	int constsize;
 	int constcapacity;
 	dm_value *consts;
@@ -71,6 +71,7 @@ void dm_chunk_set_parent(dm_chunk *chunk, dm_chunk *parent);
 void dm_chunk_reset_code(dm_chunk *chunk);
 
 int  dm_chunk_current_address(dm_chunk *chunk);
+int  dm_chunk_current_line(dm_chunk *chunk);
 
 int dm_chunk_index_of_string_constant(dm_chunk *chunk, const char *s, size_t len);
 void dm_chunk_emit_constant(dm_chunk *chunk, dm_value value);

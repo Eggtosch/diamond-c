@@ -73,24 +73,26 @@ static bool is_falsey(dm_value val) {
 	return dm_value_is(val, DM_TYPE_NIL) || (dm_value_is(val, DM_TYPE_BOOL) && val.bool_val == false);
 }
 
-static dm_value runtime_error(dm_state *dm, const char *message, ...) {
+static dm_value runtime_error(dm_state *dm, dm_chunk *chunk, const char *message, ...) {
 	char *fmt;
 	va_list args;
-	
+
+	printf("Error in line %d: ", dm_chunk_current_line(chunk));
+
 	va_start(args, message);
 	vasprintf(&fmt, message, args);
-	
+
 	dm_state_set_error(dm, fmt);
-	
+
 	free(fmt);
 	va_end(args);
 	return dm_value_nil();
 }
 
-static dm_value print_backtrace(dm_value f) {
+static dm_value print_backtrace(dm_chunk *chunk, dm_value f) {
 	printf("    in ");
 	dm_value_inspect(f);
-	printf("\n");
+	printf("(%d)\n", dm_chunk_current_line(chunk));
 	return dm_value_nil();
 }
 
@@ -126,7 +128,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				for (int i = 0; i < ups; i++) {
 					upchunk = (dm_chunk*) upchunk->parent;
 					if (upchunk == NULL) {
-						return runtime_error(dm, "Can't get upvalue from up chunk %d", ups);
+						return runtime_error(dm, chunk, "Can't get upvalue from up chunk %d", ups);
 					}
 				}
 				dm_value v = dm_chunk_get_var(upchunk, index);
@@ -142,7 +144,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				} else if (dm_value_is(table, DM_TYPE_TABLE)) {
 					dm_value_table_set(table, field, v);
 				} else {
-					runtime_error(dm, "Can't set field of <%s>, expected <array> or <table>", dm_value_type_str(field));
+					runtime_error(dm, chunk, "Can't set field of <%s>, expected <array> or <table>", dm_value_type_str(field));
 				}
 				stack_push(stack, v);
 				break;
@@ -156,7 +158,8 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				} else if (dm_value_is(table, DM_TYPE_TABLE)) {
 					v = dm_value_table_get(table, field);
 				} else {
-					return runtime_error(dm, "Can't get field of <%s>, expected <array> or <table>", dm_value_type_str(field));
+					return runtime_error(dm, chunk,
+						  "Can't get field of <%s>, expected <array> or <table>", dm_value_type_str(field));
 				}
 				stack_push(stack, v);
 				break;
@@ -170,7 +173,8 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				} else if (dm_value_is(table, DM_TYPE_TABLE)) {
 					v = dm_value_table_get(table, field);
 				} else {
-					return runtime_error(dm, "Can't get field of <%s>, expected <array> or <table>", dm_value_type_str(field));
+					return runtime_error(dm, chunk,
+						  "Can't get field of <%s>, expected <array> or <table>", dm_value_type_str(field));
 				}
 				stack_push(stack, v);
 				break;
@@ -225,7 +229,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				int arguments = read8(chunk);
 				dm_value func = stack_peekn(stack, arguments);
 				if (arguments != func.func_val->nargs) {
-					return runtime_error(dm, "expected %d args, but %d args given", func.func_val->nargs, arguments);
+					return runtime_error(dm, chunk, "expected %d args, but %d args given", func.func_val->nargs, arguments);
 				}
 
 				while (arguments--) {
@@ -235,7 +239,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 
 				dm_value ret = exec_func(dm, func, stack);
 				if (dm_state_has_error(dm)) {
-					return print_backtrace(f);
+					return print_backtrace(chunk, f);
 				}
 				stack_push(stack, ret);
 				break;
@@ -246,7 +250,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				int normal_args_start = func.func_val->takes_self ? 1 : 0;
 				arguments += normal_args_start;
 				if (arguments != func.func_val->nargs) {
-					return runtime_error(dm, "expected %d args, but %d args given", func.func_val->nargs, arguments);
+					return runtime_error(dm, chunk, "expected %d args, but %d args given", func.func_val->nargs, arguments);
 				}
 
 				while (arguments-- > normal_args_start) {
@@ -261,7 +265,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 
 				dm_value ret = exec_func(dm, func, stack);
 				if (dm_state_has_error(dm)) {
-					return print_backtrace(f);
+					return print_backtrace(chunk, f);
 				}
 				stack_push(stack, ret);
 				break;
