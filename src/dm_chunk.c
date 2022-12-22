@@ -4,9 +4,24 @@
 #include <dm_chunk.h>
 
 void dm_chunk_init(dm_chunk *chunk) {
-	*chunk = (dm_chunk){NULL, 0, 0, NULL, 0, 0, 0, NULL, 0, 0, NULL};
+	*chunk = (dm_chunk){
+		.parent = NULL,
+		.codesize = 0,
+		.codecapacity = 0,
+		.code = NULL,
+		.ip = 0,
+		.constsize = 0,
+		.constcapacity = 0,
+		.consts = NULL,
+		.varsize = 0,
+		.varcapacity = 0,
+		.vars = NULL,
+		.lines = NULL,
+		.current_line = 1
+	};
 	chunk->codecapacity = 128;
 	chunk->code = malloc(chunk->codecapacity);
+	chunk->lines = malloc(chunk->codecapacity * sizeof(int));
 	chunk->constcapacity = 4;
 	chunk->consts = malloc(chunk->constcapacity * sizeof(dm_value));
 	chunk->varcapacity = 4;
@@ -15,7 +30,9 @@ void dm_chunk_init(dm_chunk *chunk) {
 
 void dm_chunk_free(dm_chunk *chunk) {
 	free(chunk->code);
+	free(chunk->lines);
 	chunk->code = NULL;
+	chunk->lines = NULL;
 	chunk->codesize = 0;
 	chunk->codecapacity = 0;
 	free(chunk->consts);
@@ -40,11 +57,20 @@ void dm_chunk_set_parent(dm_chunk *chunk, dm_chunk *parent) {
 
 void dm_chunk_reset_code(dm_chunk *chunk) {
 	memset(chunk->code, 0, chunk->codecapacity);
+	memset(chunk->lines, 0, chunk->codecapacity * sizeof(int));
 	chunk->codesize = 0;
 }
 
 int dm_chunk_current_address(dm_chunk *chunk) {
 	return chunk->codesize;
+}
+
+int dm_chunk_current_line(dm_chunk *chunk) {
+	return chunk->lines[chunk->ip-2];
+}
+
+void dm_chunk_set_line(dm_chunk *chunk, int line) {
+	chunk->current_line = line;
 }
 
 int dm_chunk_index_of_string_constant(dm_chunk *chunk, const char *s, size_t len) {
@@ -88,7 +114,9 @@ static void emit_byte(dm_chunk *chunk, uint8_t byte) {
 	if (chunk->codesize >= chunk->codecapacity) {
 		chunk->codecapacity *= 2;
 		chunk->code = realloc(chunk->code, chunk->codecapacity);
+		chunk->lines = realloc(chunk->lines, chunk->codecapacity * sizeof(int));
 	}
+	chunk->lines[chunk->codesize] = chunk->current_line;
 	chunk->code[chunk->codesize++] = byte;
 }
 

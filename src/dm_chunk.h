@@ -63,6 +63,8 @@ typedef struct {
 	int varsize;
 	int varcapacity;
 	struct variable *vars;
+	int *lines;
+	int current_line;
 } dm_chunk;
 
 void dm_chunk_init(dm_chunk *chunk);
@@ -70,10 +72,11 @@ void dm_chunk_free(dm_chunk *chunk);
 void dm_chunk_set_parent(dm_chunk *chunk, dm_chunk *parent);
 void dm_chunk_reset_code(dm_chunk *chunk);
 
-int  dm_chunk_current_address(dm_chunk *chunk);
-int  dm_chunk_current_line(dm_chunk *chunk);
+int dm_chunk_current_address(dm_chunk *chunk);
+int dm_chunk_current_line(dm_chunk *chunk);
+void dm_chunk_set_line(dm_chunk *chunk, int line);
 
-int dm_chunk_index_of_string_constant(dm_chunk *chunk, const char *s, size_t len);
+int  dm_chunk_index_of_string_constant(dm_chunk *chunk, const char *s, size_t len);
 void dm_chunk_emit_constant(dm_chunk *chunk, dm_value value);
 void dm_chunk_emit_constant_i(dm_chunk *chunk, int index);
 

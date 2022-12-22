@@ -283,7 +283,12 @@ static void pnext(dm_parser *parser) {
 	parser->previous = parser->current;
 	for (;;) {
 		parser->current = lex(parser->lexer);
-		if (parser->current.type != DM_TOKEN_ERROR) break;
+		if (parser->current.type != DM_TOKEN_EOF) {
+			dm_chunk_set_line(parser->chunk, parser->current.line);
+		}
+		if (parser->current.type != DM_TOKEN_ERROR) {
+			break;
+		}
 
 		perr(parser, parser->current.begin);
 	}
@@ -451,12 +456,16 @@ static int pparlist(dm_parser *parser) {
 }
 
 static void pcall(dm_parser *parser) {
+	int line = parser->lexer->line;
 	int nparams = pparlist(parser);
+	dm_chunk_set_line(parser->chunk, line);
 	dm_chunk_emit_arg8(parser->chunk, DM_OP_CALL, nparams);
 }
 
 static void pcall_with_parent(dm_parser *parser) {
+	int line = parser->lexer->line;
 	int nparams = pparlist(parser);
+	dm_chunk_set_line(parser->chunk, line);
 	dm_chunk_emit_arg8(parser->chunk, DM_OP_CALL_WITHPARENT, nparams);
 }
 
