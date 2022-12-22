@@ -7,13 +7,13 @@ LIBS    := -lreadline
 CFILES         := src/dm_main.c src/dm_state.c src/dm_vm.c src/dm_compiler.c \
 				  src/dm_chunk.c src/dm_value.c src/dm_gc.c
 
-DEBUG_FLAGS := -Wall -Wextra -Isrc/ -pipe -ggdb -O2 -march=native -MMD -MP
+DEBUG_FLAGS := -Wall -Wextra -Isrc/ -pipe -ggdb -O2 -flto -march=native -MMD -MP
 DEBUG_OBJDIR   := bin/debug
 DEBUG_BINARY   := bin/debug/diamond
 DEBUG_OBJS     := $(CFILES:%.c=$(DEBUG_OBJDIR)/%.o)
 DEBUG_HEADER_DEPS   := $(CFILES:%.c=$(DEBUG_OBJDIR)/%.d)
 
-RELEASE_FLAGS := -Wall -Wextra -Werror -Isrc/ -pipe -O2 -march=native -s -MMD -MP
+RELEASE_FLAGS := -Wall -Wextra -Werror -Isrc/ -pipe -O2 -flto -march=native -s -MMD -MP
 RELEASE_OBJDIR := bin/release
 RELEASE_BINARY := bin/release/diamond
 RELEASE_OBJS   := $(CFILES:%.c=$(RELEASE_OBJDIR)/%.o)
