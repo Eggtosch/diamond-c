@@ -229,7 +229,8 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				int arguments = read8(chunk);
 				dm_value func = stack_peekn(stack, arguments);
 				if (arguments != func.func_val->nargs) {
-					return runtime_error(dm, chunk, "expected %d args, but %d args given", func.func_val->nargs, arguments);
+					int nargs = func.func_val->nargs;
+					return runtime_error(dm, chunk, "expected %d args, but %d args given", nargs, arguments);
 				}
 
 				while (arguments--) {
@@ -250,7 +251,8 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				int normal_args_start = func.func_val->takes_self ? 1 : 0;
 				arguments += normal_args_start;
 				if (arguments != func.func_val->nargs) {
-					return runtime_error(dm, chunk, "expected %d args, but %d args given", func.func_val->nargs, arguments);
+					int nargs = func.func_val->nargs;
+					return runtime_error(dm, chunk, "expected %d args, but %d args given", nargs, arguments);
 				}
 
 				while (arguments-- > normal_args_start) {
