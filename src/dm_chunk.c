@@ -251,6 +251,7 @@ static int decompile_op(uint8_t *code) {
 		case DM_OP_MINUS:				printf("MINUS\n"); return 1;
 		case DM_OP_MUL:					printf("MUL\n"); return 1;
 		case DM_OP_DIV:					printf("DIV\n"); return 1;
+		case DM_OP_MOD:					printf("MOD\n"); return 1;
 		case DM_OP_NOTEQUAL:			printf("NOTEQUAL\n"); return 1;
 		case DM_OP_EQUAL:				printf("EQUAL\n"); return 1;
 		case DM_OP_LESS:				printf("LESS\n"); return 1;

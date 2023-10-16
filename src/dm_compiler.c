@@ -15,6 +15,7 @@ typedef enum {
 	DM_TOKEN_LEFT_BRACKET, DM_TOKEN_RIGHT_BRACKET,
 	DM_TOKEN_COMMA, DM_TOKEN_DOT, DM_TOKEN_MINUS, DM_TOKEN_PLUS,
 	DM_TOKEN_SEMICOLON, DM_TOKEN_SLASH, DM_TOKEN_STAR, DM_TOKEN_COLON,
+	DM_TOKEN_PERCENT,
 
 	DM_TOKEN_BANG, DM_TOKEN_BANG_EQUAL,
 	DM_TOKEN_EQUAL, DM_TOKEN_EQUAL_EQUAL,
@@ -208,6 +209,7 @@ dm_token lex(dm_lexer *lexer) {
 		case '-': return ltoken_new(lexer, DM_TOKEN_MINUS);
 		case '+': return ltoken_new(lexer, DM_TOKEN_PLUS);
 		case '/': return ltoken_new(lexer, DM_TOKEN_SLASH);
+		case '%': return ltoken_new(lexer, DM_TOKEN_PERCENT);
 		case '*': return ltoken_new(lexer, DM_TOKEN_STAR);
 		case '!': return ltoken_new(lexer, lmatch(lexer, '=') ? DM_TOKEN_BANG_EQUAL    : DM_TOKEN_BANG);
 		case '=': return ltoken_new(lexer, lmatch(lexer, '=') ? DM_TOKEN_EQUAL_EQUAL   : DM_TOKEN_EQUAL);
@@ -531,6 +533,7 @@ static void pbinary(dm_parser *parser) {
 		case DM_TOKEN_MINUS:         dm_chunk_emit(parser->chunk, DM_OP_MINUS);        break;
 		case DM_TOKEN_STAR:          dm_chunk_emit(parser->chunk, DM_OP_MUL);          break;
 		case DM_TOKEN_SLASH:         dm_chunk_emit(parser->chunk, DM_OP_DIV);          break;
+		case DM_TOKEN_PERCENT:       dm_chunk_emit(parser->chunk, DM_OP_MOD);          break;
 		case DM_TOKEN_BANG_EQUAL:    dm_chunk_emit(parser->chunk, DM_OP_NOTEQUAL);     break;
 		case DM_TOKEN_EQUAL_EQUAL:   dm_chunk_emit(parser->chunk, DM_OP_EQUAL);        break;
 		case DM_TOKEN_LESS:          dm_chunk_emit(parser->chunk, DM_OP_LESS);         break;
@@ -793,6 +796,7 @@ dm_parserule rules[] = {
 	[DM_TOKEN_PLUS]          = {NULL,      pbinary,  DM_PREC_TERM},
 	[DM_TOKEN_SEMICOLON]     = {NULL,      NULL,     DM_PREC_NONE},
 	[DM_TOKEN_SLASH]         = {NULL,      pbinary,  DM_PREC_FACTOR},
+	[DM_TOKEN_PERCENT]       = {NULL,      pbinary,  DM_PREC_FACTOR},
 	[DM_TOKEN_STAR]          = {NULL,      pbinary,  DM_PREC_FACTOR},
 	[DM_TOKEN_BANG]          = {punary,    NULL,     DM_PREC_UNARY},
 	[DM_TOKEN_BANG_EQUAL]    = {NULL,      pbinary,  DM_PREC_COMPARISON},

@@ -329,6 +329,16 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				}
 				break;
 			}
+			case DM_OP_MOD:                 {
+				dm_value val2 = stack_pop(stack);
+				dm_value val1 = stack_pop(stack);
+				if (dm_value_is(val1, DM_TYPE_INT) && dm_value_is(val2, DM_TYPE_INT)) {
+					stack_push(stack, dm_value_int(val1.int_val % val2.int_val));
+				} else {
+					return dm_value_nil();
+				}
+				break;
+			}
 			case DM_OP_NOTEQUAL:            {
 				dm_value val2 = stack_pop(stack);
 				dm_value val1 = stack_pop(stack);

@@ -30,6 +30,7 @@ typedef enum {
 	DM_OP_MINUS,                // op8 | [value1, value2] -> [value]
 	DM_OP_MUL,                  // op8 | [value1, value2] -> [value]
 	DM_OP_DIV,                  // op8 | [value1, value2] -> [value]
+	DM_OP_MOD,                  // op8 | [value1, value2] -> [value]
 	DM_OP_NOTEQUAL,             // op8 | [value1, value2] -> [value]
 	DM_OP_EQUAL,                // op8 | [value1, value2] -> [value]
 	DM_OP_LESS,                 // op8 | [value1, value2] -> [value]
