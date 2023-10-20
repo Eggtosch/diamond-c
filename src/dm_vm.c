@@ -8,6 +8,11 @@
 #include <dm_compiler.h>
 #include <dm_value.h>
 #include <dm_chunk.h>
+#include <dm_int.h>
+#include <dm_float.h>
+
+typedef dm_value (dm_value_binary_fn)(dm_value, dm_value);
+typedef int (dm_value_cmp_fn)(dm_value, dm_value);
 
 typedef struct {
 	int size;
@@ -89,6 +94,18 @@ static dm_value runtime_error(dm_state *dm, dm_chunk *chunk, const char *message
 	return dm_value_nil();
 }
 
+static dm_value no_method_error(dm_state *dm, dm_chunk *chunk, const char *method, dm_value v) {
+	const char *ty = dm_value_type_str(v);
+	return runtime_error(dm, chunk, "Unknown method '%s' for <%s>", method, ty);
+}
+
+static dm_value compare_mismatch(dm_state *dm, dm_chunk *chunk, dm_value v1, dm_value v2) {
+	const char *msg = "Can't compare <%s> and <%s>";
+	const char *ty1 = dm_value_type_str(v1);
+	const char *ty2 = dm_value_type_str(v2);
+	return runtime_error(dm, chunk, msg, ty1, ty2);
+}
+
 static dm_value print_backtrace(dm_chunk *chunk, dm_value f) {
 	printf("    in ");
 	dm_value_inspect(f);
@@ -144,7 +161,8 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				} else if (dm_value_is(table, DM_TYPE_TABLE)) {
 					dm_value_table_set(table, field, v);
 				} else {
-					runtime_error(dm, chunk, "Can't set field of <%s>, expected <array> or <table>", dm_value_type_str(field));
+					const char *msg = "Can't set field of <%s>, expected <array> or <table>";
+					runtime_error(dm, chunk, msg, dm_value_type_str(field));
 				}
 				stack_push(stack, v);
 				break;
@@ -158,8 +176,8 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				} else if (dm_value_is(table, DM_TYPE_TABLE)) {
 					v = dm_value_table_get(table, field);
 				} else {
-					return runtime_error(dm, chunk,
-						  "Can't get field of <%s>, expected <array> or <table>", dm_value_type_str(field));
+					const char *msg = "Can't get field of <%s>, expected <array> or <table>";
+					return runtime_error(dm, chunk, msg, dm_value_type_str(field));
 				}
 				stack_push(stack, v);
 				break;
@@ -274,8 +292,10 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 			}
 			case DM_OP_NEGATE:              {
 				dm_value val = stack_pop(stack);
-				if (dm_value_is(val, DM_TYPE_INT)) {
-					stack_push(stack, dm_value_int(-val.int_val));
+				if (val.type == DM_TYPE_INT) {
+					stack_push(stack, dm_int_negate(val));
+				} else if (val.type == DM_TYPE_FLOAT) {
+					stack_push(stack, dm_float_negate(val));
 				} else {
 					return dm_value_nil();
 				}
@@ -292,51 +312,56 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 			case DM_OP_PLUS:                {
 				dm_value val2 = stack_pop(stack);
 				dm_value val1 = stack_pop(stack);
-				if (dm_value_is(val1, DM_TYPE_INT) && dm_value_is(val2, DM_TYPE_INT)) {
-					stack_push(stack, dm_value_int(val1.int_val + val2.int_val));
-				} else {
-					return dm_value_nil();
+				dm_module *m = dm_state_get_module(dm, val1.type);
+				dm_value_binary_fn *fn = m->add;
+				if (fn == NULL) {
+					return no_method_error(dm, chunk, "+", val1);
 				}
+				stack_push(stack, fn(val1, val2));
 				break;
 			}
 			case DM_OP_MINUS:               {
 				dm_value val2 = stack_pop(stack);
 				dm_value val1 = stack_pop(stack);
-				if (dm_value_is(val1, DM_TYPE_INT) && dm_value_is(val2, DM_TYPE_INT)) {
-					stack_push(stack, dm_value_int(val1.int_val - val2.int_val));
-				} else {
-					return dm_value_nil();
+				dm_module *m = dm_state_get_module(dm, val1.type);
+				dm_value_binary_fn *fn = m->sub;
+				if (fn == NULL) {
+					return no_method_error(dm, chunk, "-", val1);
 				}
+				stack_push(stack, fn(val1, val2));
 				break;
 			}
 			case DM_OP_MUL:                 {
 				dm_value val2 = stack_pop(stack);
 				dm_value val1 = stack_pop(stack);
-				if (dm_value_is(val1, DM_TYPE_INT) && dm_value_is(val2, DM_TYPE_INT)) {
-					stack_push(stack, dm_value_int(val1.int_val * val2.int_val));
-				} else {
-					return dm_value_nil();
+				dm_module *m = dm_state_get_module(dm, val1.type);
+				dm_value_binary_fn *fn = m->mul;
+				if (fn == NULL) {
+					return no_method_error(dm, chunk, "*", val1);
 				}
+				stack_push(stack, fn(val1, val2));
 				break;
 			}
 			case DM_OP_DIV:                 {
 				dm_value val2 = stack_pop(stack);
 				dm_value val1 = stack_pop(stack);
-				if (dm_value_is(val1, DM_TYPE_INT) && dm_value_is(val2, DM_TYPE_INT)) {
-					stack_push(stack, dm_value_int(val1.int_val / val2.int_val));
-				} else {
-					return dm_value_nil();
+				dm_module *m = dm_state_get_module(dm, val1.type);
+				dm_value_binary_fn *fn = m->div;
+				if (fn == NULL) {
+					return no_method_error(dm, chunk, "/", val1);
 				}
+				stack_push(stack, fn(val1, val2));
 				break;
 			}
 			case DM_OP_MOD:                 {
 				dm_value val2 = stack_pop(stack);
 				dm_value val1 = stack_pop(stack);
-				if (dm_value_is(val1, DM_TYPE_INT) && dm_value_is(val2, DM_TYPE_INT)) {
-					stack_push(stack, dm_value_int(val1.int_val % val2.int_val));
-				} else {
-					return dm_value_nil();
+				dm_module *m = dm_state_get_module(dm, val1.type);
+				dm_value_binary_fn *fn = m->mod;
+				if (fn == NULL) {
+					return no_method_error(dm, chunk, "%", val1);
 				}
+				stack_push(stack, fn(val1, val2));
 				break;
 			}
 			case DM_OP_NOTEQUAL:            {
@@ -354,41 +379,45 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 			case DM_OP_LESS:                {
 				dm_value val2 = stack_pop(stack);
 				dm_value val1 = stack_pop(stack);
-				if (dm_value_is(val1, DM_TYPE_INT) && dm_value_is(val2, DM_TYPE_INT)) {
-					stack_push(stack, dm_value_bool(val1.int_val < val2.int_val));
-				} else {
-					return dm_value_nil();
+				if (val1.type != val2.type) {
+					return compare_mismatch(dm, chunk, val1, val2);
 				}
+				dm_module *m = dm_state_get_module(dm, val1.type);
+				dm_value_cmp_fn *fn = m->compare;
+				stack_push(stack, dm_value_bool(fn(val1, val2) < 0));
 				break;
 			}
 			case DM_OP_LESSEQUAL:           {
 				dm_value val2 = stack_pop(stack);
 				dm_value val1 = stack_pop(stack);
-				if (dm_value_is(val1, DM_TYPE_INT) && dm_value_is(val2, DM_TYPE_INT)) {
-					stack_push(stack, dm_value_bool(val1.int_val <= val2.int_val));
-				} else {
-					return dm_value_nil();
+				if (val1.type != val2.type) {
+					return compare_mismatch(dm, chunk, val1, val2);
 				}
+				dm_module *m = dm_state_get_module(dm, val1.type);
+				dm_value_cmp_fn *fn = m->compare;
+				stack_push(stack, dm_value_bool(fn(val1, val2) <= 0));
 				break;
 			}
 			case DM_OP_GREATER:             {
 				dm_value val2 = stack_pop(stack);
 				dm_value val1 = stack_pop(stack);
-				if (dm_value_is(val1, DM_TYPE_INT) && dm_value_is(val2, DM_TYPE_INT)) {
-					stack_push(stack, dm_value_bool(val1.int_val > val2.int_val));
-				} else {
-					return dm_value_nil();
+				if (val1.type != val2.type) {
+					return compare_mismatch(dm, chunk, val1, val2);
 				}
+				dm_module *m = dm_state_get_module(dm, val1.type);
+				dm_value_cmp_fn *fn = m->compare;
+				stack_push(stack, dm_value_bool(fn(val1, val2) > 0));
 				break;
 			}
 			case DM_OP_GREATEREQUAL:        {
 				dm_value val2 = stack_pop(stack);
 				dm_value val1 = stack_pop(stack);
-				if (dm_value_is(val1, DM_TYPE_INT) && dm_value_is(val2, DM_TYPE_INT)) {
-					stack_push(stack, dm_value_bool(val1.int_val >= val2.int_val));
-				} else {
-					return dm_value_nil();
+				if (val1.type != val2.type) {
+					return compare_mismatch(dm, chunk, val1, val2);
 				}
+				dm_module *m = dm_state_get_module(dm, val1.type);
+				dm_value_cmp_fn *fn = m->compare;
+				stack_push(stack, dm_value_bool(fn(val1, val2) >= 0));
 				break;
 			}
 			case DM_OP_JUMP_IF_TRUE_OR_POP: {

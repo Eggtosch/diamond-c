@@ -13,7 +13,9 @@ typedef enum {
 	DM_TYPE_STRING,
 	DM_TYPE_ARRAY,
 	DM_TYPE_TABLE,
-	DM_TYPE_FUNCTION
+	DM_TYPE_FUNCTION,
+	// this has always to be last enum entry
+	DM_TYPE_NUM_TYPES,
 } dm_type;
 
 typedef bool     dm_bool;
@@ -57,6 +59,16 @@ typedef struct {
 		dm_gc_obj   *gc_obj;
 	};
 } dm_value;
+
+typedef struct {
+	int      (*compare)(dm_value, dm_value);
+	void     (*inspect)(dm_value);
+	dm_value (*add)    (dm_value, dm_value);
+	dm_value (*sub)    (dm_value, dm_value);
+	dm_value (*mul)    (dm_value, dm_value);
+	dm_value (*div)    (dm_value, dm_value);
+	dm_value (*mod)    (dm_value, dm_value);
+} dm_module;
 
 dm_value dm_value_nil(void);
 dm_value dm_value_bool(dm_bool bool_val);

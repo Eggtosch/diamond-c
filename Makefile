@@ -5,7 +5,8 @@ LDFLAGS := -pipe -flto
 LIBS    := -lreadline
 
 CFILES         := src/dm_main.c src/dm_state.c src/dm_vm.c src/dm_compiler.c \
-				  src/dm_chunk.c src/dm_value.c src/dm_gc.c
+				  src/dm_chunk.c src/dm_value.c src/dm_gc.c src/dm_int.c \
+				  src/dm_float.c
 
 DEBUG_FLAGS := -Wall -Wextra -Isrc/ -pipe -ggdb -O2 -flto -march=native -MMD -MP
 DEBUG_OBJDIR   := bin/debug
