@@ -7,10 +7,6 @@ static int dm_int_compare(dm_value self, dm_value other) {
 	return a < b ? -1 : a == b ? 0 : 1;
 }
 
-static void dm_int_inspect(dm_value self) {
-	printf("%ld", self.int_val);
-}
-
 dm_value dm_int_negate(dm_value self) {
 	return dm_value_int(-self.int_val);
 }
@@ -62,7 +58,6 @@ dm_module dm_int_init(dm_state *dm) {
 	(void) dm;
 	dm_module m = {0};
 	m.compare = dm_int_compare;
-	m.inspect = dm_int_inspect;
 	m.add = dm_int_add;
 	m.sub = dm_int_sub;
 	m.mul = dm_int_mul;

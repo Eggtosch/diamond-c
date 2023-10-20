@@ -7,10 +7,6 @@ static int dm_float_compare(dm_value self, dm_value other) {
 	return a < b ? -1 : a == b ? 0: 1;
 }
 
-static void dm_float_inspect(dm_value self) {
-	printf("%g", self.float_val);
-}
-
 dm_value dm_float_negate(dm_value self) {
 	return dm_value_float(-self.float_val);
 }
@@ -55,7 +51,6 @@ dm_module dm_float_init(dm_state *dm) {
 	(void) dm;
 	dm_module m = {0};
 	m.compare = dm_float_compare;
-	m.inspect = dm_float_inspect;
 	m.add = dm_float_add;
 	m.sub = dm_float_sub;
 	m.mul = dm_float_mul;

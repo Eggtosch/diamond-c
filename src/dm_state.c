@@ -4,6 +4,7 @@
 #include <dm_value.h>
 #include <dm_gc.h>
 #include <dm_nil.h>
+#include <dm_bool.h>
 #include <dm_int.h>
 #include <dm_float.h>
 
@@ -16,7 +17,7 @@ struct dm_state {
 
 static void init_modules(dm_state *dm) {
 	dm->modules[DM_TYPE_NIL] = dm_nil_init(dm);
-	dm->modules[DM_TYPE_BOOL] = (dm_module){0};
+	dm->modules[DM_TYPE_BOOL] = dm_bool_init(dm);
 	dm->modules[DM_TYPE_INT] = dm_int_init(dm);
 	dm->modules[DM_TYPE_FLOAT] = dm_float_init(dm);
 	dm->modules[DM_TYPE_STRING] = (dm_module){0};
