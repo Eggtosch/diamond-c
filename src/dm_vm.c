@@ -177,7 +177,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 					v = dm_value_table_get(table, field);
 				} else {
 					const char *msg = "Can't get field of <%s>, expected <array> or <table>";
-					return runtime_error(dm, chunk, msg, dm_value_type_str(field));
+					return runtime_error(dm, chunk, msg, dm_value_type_str(table));
 				}
 				stack_push(stack, v);
 				break;
@@ -191,8 +191,8 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				} else if (dm_value_is(table, DM_TYPE_TABLE)) {
 					v = dm_value_table_get(table, field);
 				} else {
-					return runtime_error(dm, chunk,
-						  "Can't get field of <%s>, expected <array> or <table>", dm_value_type_str(field));
+					const char *msg = "Can't get field of <%s>, expected <array> or <table>";
+					return runtime_error(dm, chunk, msg, dm_value_type_str(table));
 				}
 				stack_push(stack, v);
 				break;
