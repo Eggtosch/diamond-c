@@ -53,13 +53,12 @@ static dm_value dm_float_div(dm_value self, dm_value other) {
 
 dm_module dm_float_init(dm_state *dm) {
 	(void) dm;
-	dm_module m;
+	dm_module m = {0};
 	m.compare = dm_float_compare;
 	m.inspect = dm_float_inspect;
 	m.add = dm_float_add;
 	m.sub = dm_float_sub;
 	m.mul = dm_float_mul;
 	m.div = dm_float_div;
-	m.mod = NULL;
 	return m;
 }
