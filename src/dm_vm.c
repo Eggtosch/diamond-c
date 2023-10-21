@@ -156,10 +156,12 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				dm_value v = stack_pop(stack);
 				dm_value field = stack_pop(stack);
 				dm_value table = stack_pop(stack);
-				dm_module *m = dm_state_get_module(dm, table.type);
-				bool success = m->fieldset(table, field, v);
-				if (!success) {
-					const char *msg = "Can't set field of <%s>";
+				if (table.type == DM_TYPE_ARRAY) {
+					dm_value_array_set(table, field, v);
+				} else if (table.type == DM_TYPE_TABLE) {
+					dm_value_table_set(table, field, v);
+				} else {
+					const char *msg = "Can't set field of <%s>, expected <array> or <table>";
 					return runtime_error(dm, chunk, msg, dm_value_type_str(field));
 				}
 				stack_push(stack, v);
@@ -168,11 +170,13 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 			case DM_OP_FIELDGET:            {
 				dm_value field = stack_pop(stack);
 				dm_value table = stack_pop(stack);
-				dm_module *m = dm_state_get_module(dm, table.type);
 				dm_value v;
-				bool success = m->fieldget(table, field, &v);
-				if (!success) {
-					const char *msg = "Can't get field of <%s>";
+				if (table.type == DM_TYPE_ARRAY) {
+					v = dm_value_array_get(table, field);
+				} else if (table.type == DM_TYPE_TABLE) {
+					v = dm_value_table_get(table, field);
+				} else {
+					const char *msg = "Can't get field of <%s>, expected <array> or <table>";
 					return runtime_error(dm, chunk, msg, dm_value_type_str(table));
 				}
 				stack_push(stack, v);
@@ -181,11 +185,13 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 			case DM_OP_FIELDGET_PUSHPARENT: {
 				dm_value field = stack_pop(stack);
 				dm_value table = stack_peek(stack);
-				dm_module *m = dm_state_get_module(dm, table.type);
 				dm_value v;
-				bool success = m->fieldget(table, field, &v);
-				if (!success) {
-					const char *msg = "Can't get field of <%s>";
+				if (table.type == DM_TYPE_ARRAY) {
+					v = dm_value_array_get(table, field);
+				} else if (table.type == DM_TYPE_TABLE) {
+					v = dm_value_table_get(table, field);
+				} else {
+					const char *msg = "Can't get field of <%s>, expected <array> or <table>";
 					return runtime_error(dm, chunk, msg, dm_value_type_str(table));
 				}
 				stack_push(stack, v);

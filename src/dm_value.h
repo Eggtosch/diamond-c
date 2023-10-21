@@ -62,8 +62,7 @@ typedef struct {
 
 typedef struct {
 	int      (*compare) (dm_value, dm_value);
-	bool     (*fieldget)(dm_value, dm_value, dm_value*);
-	bool     (*fieldset)(dm_value, dm_value, dm_value);
+	bool     (*fieldget_s)(dm_value, const char*, dm_value*);
 	dm_value (*add)     (dm_value, dm_value);
 	dm_value (*sub)     (dm_value, dm_value);
 	dm_value (*mul)     (dm_value, dm_value);

@@ -7,6 +7,7 @@
 #include <dm_bool.h>
 #include <dm_int.h>
 #include <dm_float.h>
+#include <dm_string.h>
 
 struct dm_state {
 	dm_value main;
@@ -20,7 +21,7 @@ static void init_modules(dm_state *dm) {
 	dm->modules[DM_TYPE_BOOL] = dm_bool_init(dm);
 	dm->modules[DM_TYPE_INT] = dm_int_init(dm);
 	dm->modules[DM_TYPE_FLOAT] = dm_float_init(dm);
-	dm->modules[DM_TYPE_STRING] = (dm_module){0};
+	dm->modules[DM_TYPE_STRING] = dm_string_init(dm);
 	dm->modules[DM_TYPE_ARRAY] = (dm_module){0};
 	dm->modules[DM_TYPE_TABLE] = (dm_module){0};
 	dm->modules[DM_TYPE_FUNCTION] = (dm_module){0};
@@ -66,4 +67,3 @@ void dm_close(dm_state *dm) {
 	dm_gc_deinit(dm);
 	free(dm);
 }
-
