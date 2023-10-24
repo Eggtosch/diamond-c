@@ -7,6 +7,11 @@ static int dm_float_compare(dm_value self, dm_value other) {
 	return a < b ? -1 : a == b ? 0: 1;
 }
 
+static bool dm_float_fieldset(dm_value self, const char *field, dm_value v) {
+	(void) self, (void) field, (void) v;
+	return false;
+}
+
 static bool dm_float_fieldget(dm_value self, const char *field, dm_value *v) {
 	(void) self, (void) field, (void) v;
 	return false;
@@ -56,6 +61,7 @@ dm_module dm_float_init(dm_state *dm) {
 	(void) dm;
 	dm_module m = {0};
 	m.compare = dm_float_compare;
+	m.fieldset_s = dm_float_fieldset;
 	m.fieldget_s = dm_float_fieldget;
 	m.add = dm_float_add;
 	m.sub = dm_float_sub;

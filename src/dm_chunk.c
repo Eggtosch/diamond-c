@@ -229,8 +229,11 @@ static int decompile_op(uint8_t *code) {
 		case DM_OP_VARGET:				printf("VARGET %d\n", code[1] << 8 | code[2]); return 3;
 		case DM_OP_VARGET_UP:			printf("VARGET_UP (%d) %d\n", code[1], code[2] << 8 | code[3]); return 4;
 		case DM_OP_FIELDSET:			printf("FIELDSET\n"); return 1;
+		case DM_OP_FIELDSET_S:			printf("FIELDSET_S\n"); return 1;
 		case DM_OP_FIELDGET:			printf("FIELDGET\n"); return 1;
+		case DM_OP_FIELDGET_S:			printf("FIELDGET_S\n"); return 1;
 		case DM_OP_FIELDGET_PUSHPARENT:	printf("FIELDGET_PUSHPARENT\n"); return 1;
+		case DM_OP_FIELDGET_S_PUSHPARENT: printf("FIELDGET_S_PUSHPARENT\n"); return 1;
 
 		case DM_OP_CONSTANT:			printf("CONSTANT %d\n", code[1] << 8 | code[2]); return 3;
 		case DM_OP_CONSTANT_SMALLINT:	printf("CONSTANT_SMALLINT <%d>\n", code[1] << 8 | code[2]); return 3;

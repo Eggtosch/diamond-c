@@ -8,8 +8,11 @@ typedef enum {
 	DM_OP_VARGET,               // op8 index16 | [] -> [value]
 	DM_OP_VARGET_UP,			// op8 up8 index16 | [] -> [value]
 	DM_OP_FIELDSET,             // op8 | [table, field, value] -> [value]
+	DM_OP_FIELDSET_S,			// op8 | [table, string, value] -> [value]
 	DM_OP_FIELDGET,             // op8 | [table, field] -> [value]
+	DM_OP_FIELDGET_S,			// op8 | [table, string] -> [value]
 	DM_OP_FIELDGET_PUSHPARENT,  // op8 | [table, field] -> [table, value]
+	DM_OP_FIELDGET_S_PUSHPARENT,// op8 | [table, string] -> [table, value]
 
 	DM_OP_CONSTANT,             // op8 index16 | [] -> [value]
 	DM_OP_CONSTANT_SMALLINT,    // op8 imm16 | [] -> [value]

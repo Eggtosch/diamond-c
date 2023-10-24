@@ -487,12 +487,12 @@ static void pdot(dm_parser *parser) {
 
 	if (pmatch(parser, DM_TOKEN_EQUAL)) {
 		pexpression(parser);
-		dm_chunk_emit(parser->chunk, DM_OP_FIELDSET);
+		dm_chunk_emit(parser->chunk, DM_OP_FIELDSET_S);
 	} else if (pmatch(parser, DM_TOKEN_LEFT_PAREN)) {
-		dm_chunk_emit(parser->chunk, DM_OP_FIELDGET_PUSHPARENT);
+		dm_chunk_emit(parser->chunk, DM_OP_FIELDGET_S_PUSHPARENT);
 		pcall_with_parent(parser);
 	} else {
-		dm_chunk_emit(parser->chunk, DM_OP_FIELDGET);
+		dm_chunk_emit(parser->chunk, DM_OP_FIELDGET_S);
 	}
 }
 

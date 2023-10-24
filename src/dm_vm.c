@@ -167,6 +167,19 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				stack_push(stack, v);
 				break;
 			}
+			case DM_OP_FIELDSET_S:			{
+				dm_value v = stack_pop(stack);
+				dm_value field = stack_pop(stack);
+				dm_value table = stack_pop(stack);
+				dm_module *m = dm_state_get_module(dm, table.type);
+				const char *field_s = field.str_val->data;
+				if (!m->fieldset_s(table, field_s, v)) {
+					const char *ty = dm_value_type_str(table);
+					return runtime_error(dm, chunk, "Can't set field '%s' of <%s>", field_s, ty);
+				}
+				stack_push(stack, v);
+				break;
+			}
 			case DM_OP_FIELDGET:            {
 				dm_value field = stack_pop(stack);
 				dm_value table = stack_pop(stack);
@@ -182,6 +195,19 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				stack_push(stack, v);
 				break;
 			}
+			case DM_OP_FIELDGET_S:			{
+				dm_value field = stack_pop(stack);
+				dm_value table = stack_pop(stack);
+				dm_value v;
+				dm_module *m = dm_state_get_module(dm, table.type);
+				const char *field_s = field.str_val->data;
+				if (!m->fieldget_s(table, field_s, &v)) {
+					const char *ty = dm_value_type_str(table);
+					return runtime_error(dm, chunk, "Can't get field '%s' of <%s>", field_s, ty);
+				}
+				stack_push(stack, v);
+				break;
+			}
 			case DM_OP_FIELDGET_PUSHPARENT: {
 				dm_value field = stack_pop(stack);
 				dm_value table = stack_peek(stack);
@@ -193,6 +219,19 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				} else {
 					const char *msg = "Can't get field of <%s>, expected <array> or <table>";
 					return runtime_error(dm, chunk, msg, dm_value_type_str(table));
+				}
+				stack_push(stack, v);
+				break;
+			}
+			case DM_OP_FIELDGET_S_PUSHPARENT: {
+				dm_value field = stack_pop(stack);
+				dm_value table = stack_peek(stack);
+				dm_value v;
+				dm_module *m = dm_state_get_module(dm, table.type);
+				const char *field_s = field.str_val->data;
+				if (!m->fieldget_s(table, field.str_val->data, &v)) {
+					const char *ty = dm_value_type_str(table);
+					return runtime_error(dm, chunk, "Can't get field '%s' of <%s>", field_s, ty);
 				}
 				stack_push(stack, v);
 				break;
