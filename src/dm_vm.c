@@ -520,8 +520,8 @@ dm_value dm_vm_exec(dm_state *dm, char *prog) {
 	dm_stack stack;
 	stack_init(&stack);
 
-	dm_chunk_decompile(main.func_val->chunk);
 	dm_value v = exec_func(dm, main, &stack);
+	dm_chunk_decompile(main.func_val->chunk);
 
 	stack_free(&stack);
 
