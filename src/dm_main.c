@@ -8,6 +8,14 @@
 
 #define DM_REPL_PROMPT "> "
 
+static void usage(char **argv) {
+	fprintf(stderr, "Usage:\n");
+	fprintf(stderr, "  run repl  : %s\n", argv[0]);
+	fprintf(stderr, "  run script: %s <path>\n", argv[0]);
+	fprintf(stderr, "  run lsp   : %s --lsp\n", argv[0]);
+	fprintf(stderr, "  print help: %s --help\n", argv[0]);
+}
+
 static char *read_file(const char *path) {
 	FILE *file = fopen(path, "rb");
 	if (file == NULL) {
@@ -63,16 +71,26 @@ static void run_file(dm_state *dm, char *path) {
 	free(source);
 }
 
+static void run_lsp_server(dm_state *dm) {
+	(void) dm;
+}
+
 int main(int argc, char **argv) {
 	dm_state *dm = dm_open();
 
 	if (argc == 1) {
 		repl(dm);
 	} else if (argc == 2) {
-		run_file(dm, argv[1]);
+		if (strcmp(argv[1], "--help") == 0) {
+			usage(argv);
+		} else if (strcmp(argv[1], "--lsp") == 0) {
+			run_lsp_server(dm);
+		} else {
+			run_file(dm, argv[1]);
+		}
 	} else {
-		fprintf(stderr, "Usage: %s <path>\n", argv[0]);
-		exit(1);
+		usage(argv);
+		return 1;
 	}
 
 	dm_close(dm);
