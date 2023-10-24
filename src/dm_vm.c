@@ -124,7 +124,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 
 	for (;;) {
 		uint8_t opcode = read8(chunk);
-		
+
 		switch (opcode) {
 			case DM_OP_VARSET:              {
 				int index = read16(chunk);
