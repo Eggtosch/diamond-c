@@ -6,53 +6,31 @@ LIBS    := -lreadline
 
 CFILES := $(wildcard src/dm_*.c)
 
-DEBUG_FLAGS := -Wall -Wextra -Isrc/ -pipe -ggdb -O2 -flto -march=native -MMD -MP
-DEBUG_OBJDIR   := bin/debug
-DEBUG_BINARY   := bin/debug/diamond
-DEBUG_OBJS     := $(CFILES:%.c=$(DEBUG_OBJDIR)/%.o)
-DEBUG_HEADER_DEPS   := $(CFILES:%.c=$(DEBUG_OBJDIR)/%.d)
+FLAGS := -Wall -Wextra -Isrc/ -pipe -O2 -flto -march=native -s -MMD -MP
+OBJDIR := bin
+BINARY := bin/diamond
+OBJS   := $(CFILES:%.c=$(OBJDIR)/%.o)
+HEADER_DEPS := $(CFILES:%.c=$(OBJDIR)/%.d)
 
-RELEASE_FLAGS := -Wall -Wextra -Werror -Isrc/ -pipe -O2 -flto -march=native -s -MMD -MP
-RELEASE_OBJDIR := bin/release
-RELEASE_BINARY := bin/release/diamond
-RELEASE_OBJS   := $(CFILES:%.c=$(RELEASE_OBJDIR)/%.o)
-RELEASE_HEADER_DEPS := $(CFILES:%.c=$(RELEASE_OBJDIR)/%.d)
+.PHONY: all
+all: $(BINARY)
 
+$(OBJDIR):
+	mkdir -p $(OBJDIR)/src
 
-.PHONY: all release
-all: $(DEBUG_OBJDIR) $(DEBUG_BINARY)
-release: $(RELEASE_OBJDIR) $(RELEASE_BINARY)
+$(BINARY): $(OBJDIR) $(OBJS)
+	$(CC) $(LDFLAGS) -o $(BINARY) $(OBJS) $(LIBS)
 
-
-$(DEBUG_OBJDIR):
-	mkdir -p $(DEBUG_OBJDIR)/src
-
-$(DEBUG_BINARY): $(DEBUG_OBJS)
-	$(CC) $(LDFLAGS) -o $(DEBUG_BINARY) $(DEBUG_OBJS) $(LIBS)
-
--include $(DEBUG_HEADER_DEPS)
-$(DEBUG_OBJDIR)/%.o: %.c
-	$(CC) $(DEBUG_FLAGS) -c $< -o $@
-
-
-$(RELEASE_OBJDIR):
-	mkdir -p $(RELEASE_OBJDIR)/src
-
-$(RELEASE_BINARY): $(RELEASE_OBJS)
-	$(CC) $(LDFLAGS) -o $(RELEASE_BINARY) $(RELEASE_OBJS) $(LIBS)
-
--include $(RELEASE_HEADER_DEPS)
-$(RELEASE_OBJDIR)/%.o: %.c
-	$(CC) $(RELEASE_FLAGS) -c $< -o $@
-
+-include $(HEADER_DEPS)
+$(OBJDIR)/%.o: %.c
+	$(CC) $(FLAGS) -c $< -o $@
 
 .PHONY: clean
 clean:
-	$(RM) $(DEBUG_BINARY) $(RELEASE_BINARY)
-	$(RM) $(DEBUG_OBJS) $(RELEASE_OBJS)
-	$(RM) $(DEBUG_HEADER_DEPS) $(RELEASE_HEADER_DEPS)
-	$(RM) -r $(DEBUG_OBJDIR) $(RELEASE_OBJDIR)
-
+	$(RM) $(BINARY)
+	$(RM) $(OBJS)
+	$(RM) $(HEADER_DEPS)
+	$(RM) -r $(OBJDIR)
 
 ALL_C_H_FILES := $(shell find . -type f -name "*.c" -o -name "*.h")
 
