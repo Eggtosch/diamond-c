@@ -5,6 +5,7 @@
 
 #include <dm_vm.h>
 #include <dm_state.h>
+#include <dm_lsp.h>
 
 #define DM_REPL_PROMPT "> "
 
@@ -71,10 +72,6 @@ static void run_file(dm_state *dm, char *path) {
 	free(source);
 }
 
-static void run_lsp_server(dm_state *dm) {
-	(void) dm;
-}
-
 int main(int argc, char **argv) {
 	dm_state *dm = dm_open();
 
@@ -84,7 +81,7 @@ int main(int argc, char **argv) {
 		if (strcmp(argv[1], "--help") == 0) {
 			usage(argv);
 		} else if (strcmp(argv[1], "--lsp") == 0) {
-			run_lsp_server(dm);
+			dm_lsp_run(dm);
 		} else {
 			run_file(dm, argv[1]);
 		}
