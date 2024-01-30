@@ -25,6 +25,14 @@ $(BINARY): $(OBJDIR) $(OBJS)
 $(OBJDIR)/%.o: %.c
 	$(CC) $(FLAGS) -c $< -o $@
 
+.PHONY: tests
+tests: $(BINARY)
+	tests/run_tests.sh
+
+.PHONY: tests-dry
+tests-dry: $(BINARY)
+	tests/run_tests.sh --dry
+
 .PHONY: clean
 clean:
 	$(RM) $(BINARY)
