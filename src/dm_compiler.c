@@ -846,10 +846,10 @@ dm_parserule rules[] = {
 	[DM_TOKEN_EOF]           = {NULL,      NULL,     DM_PREC_NONE}
 };
 
-
 /*
 prog ::= {declaration}
-declaration ::= statement | functiondef
+declaration ::= import | statement | functiondef
+import ::= 'import(' string ')'
 statement ::= 	var '=' exp |
 				'while' exp 'do' {statement | 'break' | 'next'} 'end' |
 				'if' exp 'then' {statement} {'elsif' exp 'then' {statement}} ['else' {statement}] 'end' |
