@@ -24,12 +24,7 @@ void dm_gc_deinit(dm_state *dm) {
 	gc->last = NULL;
 }
 
-dm_gc_obj *dm_gc_malloc(
-	dm_state *dm,
-	size_t size,
-	void (*mark_fn)(dm_state *dm, dm_gc_obj *obj),
-	void (*free_fn)(dm_state *dm, dm_gc_obj *obj)
-) {
+dm_gc_obj *dm_gc_malloc(dm_state *dm, size_t size, dm_gc_mark_fn mark, dm_gc_free_fn free) {
 	dm_gc *gc = dm_state_get_gc(dm);
 	dm_gc_obj *ptr = malloc(size);
 	ptr->previous = NULL;
@@ -38,8 +33,8 @@ dm_gc_obj *dm_gc_malloc(
 	if (ptr->next != NULL) {
 		ptr->next->previous = ptr;
 	}
-	ptr->mark = mark_fn;
-	ptr->free = free_fn;
+	ptr->mark = mark;
+	ptr->free = free;
 	ptr->marked = 0;
 	return ptr;
 }
