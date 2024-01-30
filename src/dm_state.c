@@ -10,7 +10,6 @@
 #include <dm_string.h>
 
 struct dm_state {
-	dm_value main;
 	dm_gc gc;
 	dm_module modules[DM_TYPE_NUM_TYPES];
 	bool runtime_error;
@@ -27,21 +26,37 @@ static void init_modules(dm_state *dm) {
 	dm->modules[DM_TYPE_FUNCTION] = (dm_module){0};
 }
 
+char *dm_read_file(const char *path) {
+	FILE *file = fopen(path, "rb");
+	if (file == NULL) {
+		fprintf(stderr, "Could not open file \"%s\".\n", path);
+		exit(1);
+	}
+
+	fseek(file, 0L, SEEK_END);
+	size_t file_size = ftell(file);
+	rewind(file);
+
+	char *buffer = malloc(file_size + 1);
+
+	size_t bytes_read = fread(buffer, sizeof(char), file_size, file);
+	if (bytes_read < file_size) {
+		fprintf(stderr, "Could not read whole file \"%s\".\n", path);
+		exit(1);
+	}
+
+	buffer[bytes_read] = '\0';
+
+	fclose(file);
+	return buffer;
+}
+
 dm_state *dm_open(void) {
 	dm_state *dm = malloc(sizeof(dm_state));
-	dm->main = dm_value_nil();
 	dm_gc_init(dm);
 	init_modules(dm);
 	dm->runtime_error = false;
 	return dm;
-}
-
-void *dm_state_get_main(dm_state *dm) {
-	return (void*) &dm->main;
-}
-
-void dm_state_set_main(dm_state *dm, dm_value main) {
-	dm->main = main;
 }
 
 void *dm_state_get_gc(dm_state *dm) {

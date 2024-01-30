@@ -60,6 +60,7 @@ syn match   dmComment         "#.*$" contains=dmTodo,@Spell
 syn match dmComment "\%^#!.*"
 
 syn keyword dmConstant nil true false
+syn keyword dmImport import
 
 " strings
 syn match dmSpecial contained #\\[\\abfnrtv'"[\]]\|\\[x]\x\{,3}\|\\[[:digit:]]\{,3}#
@@ -83,6 +84,7 @@ syn region dmTableBlock transparent matchgroup=dmTable start="{" end="}" contain
 " Define the default highlighting.
 " Only when an item doesn't have highlighting yet
 
+hi def link dmImport           Keyword
 hi def link dmStatement        Statement
 hi def link dmRepeat           Repeat
 hi def link dmFor              Repeat

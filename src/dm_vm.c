@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <unistd.h>
 
 #include <dm_vm.h>
 #include <dm_compiler.h>
@@ -113,6 +114,22 @@ static dm_value print_backtrace(dm_chunk *chunk, dm_value f) {
 	return dm_value_nil();
 }
 
+static dm_value do_import(dm_state *dm, dm_value module) {
+	// TODO: search for builtin modules
+	char *cwd = getcwd(NULL, 0);
+	if (cwd == NULL) {
+		return dm_value_nil();
+	}
+
+	char *file;
+	asprintf(&file, "%s/%s.dm", cwd, module.str_val->data);
+	char *prog = dm_read_file(file);
+
+	free(file);
+	free(cwd);
+	return dm_vm_exec(dm, prog);
+}
+
 static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 	dm_chunk *chunk = (dm_chunk*) f.func_val->chunk;
 	chunk->ip = 0;
@@ -126,6 +143,16 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 		uint8_t opcode = read8(chunk);
 
 		switch (opcode) {
+			case DM_OP_IMPORT:              {
+				dm_value module = stack_pop(stack);
+				if (!dm_value_is(module, DM_TYPE_STRING)) {
+					return runtime_error(dm, chunk, "Expected string for import");
+				}
+
+				dm_value v = do_import(dm, module);
+				stack_push(stack, v);
+				break;
+			}
 			case DM_OP_VARSET:              {
 				int index = read16(chunk);
 				dm_value v = stack_peek(stack);
@@ -508,12 +535,8 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 
 dm_value dm_vm_exec(dm_state *dm, char *prog) {
 	dm_state_set_error(dm, NULL);
-	if (dm_compile(dm, prog) != 0) {
-		return dm_value_nil();
-	}
-
-	dm_value main = *(dm_value*) dm_state_get_main(dm);
-	if (!dm_value_is(main, DM_TYPE_FUNCTION)) {
+	dm_value main = dm_value_nil();
+	if (dm_compile(dm, &main, prog) != 0) {
 		return dm_value_nil();
 	}
 

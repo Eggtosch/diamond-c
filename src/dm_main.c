@@ -17,31 +17,6 @@ static void usage(char **argv) {
 	fprintf(stderr, "  print help: %s --help\n", argv[0]);
 }
 
-static char *read_file(const char *path) {
-	FILE *file = fopen(path, "rb");
-	if (file == NULL) {
-		fprintf(stderr, "Could not open file \"%s\".\n", path);
-		exit(1);
-	}
-
-	fseek(file, 0L, SEEK_END);
-	size_t file_size = ftell(file);
-	rewind(file);
-
-	char *buffer = malloc(file_size + 1);
-
-	size_t bytes_read = fread(buffer, sizeof(char), file_size, file);
-	if (bytes_read < file_size) {
-		fprintf(stderr, "Could not read whole file \"%s\".\n", path);
-		exit(1);
-	}
-
-	buffer[bytes_read] = '\0';
-
-	fclose(file);
-	return buffer;
-}
-
 static void run(dm_state *dm, char *prog) {
 	dm_value ret = dm_vm_exec(dm, prog);
 	printf("Result: ");
@@ -67,7 +42,7 @@ static void repl(dm_state *dm) {
 }
 
 static void run_file(dm_state *dm, char *path) {
-	char *source = read_file(path);
+	char *source = dm_read_file(path);
 	run(dm, source);
 	free(source);
 }

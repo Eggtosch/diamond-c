@@ -4,6 +4,7 @@
 #include <dm_value.h>
 
 typedef enum {
+	DM_OP_IMPORT,               // op8 | [string] -> [value]
 	DM_OP_VARSET,               // op8 index16 | [value] -> [value]
 	DM_OP_VARGET,               // op8 index16 | [] -> [value]
 	DM_OP_VARGET_UP,			// op8 up8 index16 | [] -> [value]

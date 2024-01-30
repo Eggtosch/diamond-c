@@ -29,6 +29,8 @@ typedef enum {
 	DM_TOKEN_OR, DM_TOKEN_RETURN, DM_TOKEN_SELF, DM_TOKEN_THEN, DM_TOKEN_TRUE,
 	DM_TOKEN_WHILE,
 
+	DM_TOKEN_IMPORT,
+
 	DM_TOKEN_ERROR, DM_TOKEN_EOF
 } dm_tokentype;
 
@@ -61,6 +63,7 @@ static struct reserved_word reserved_words[] = {
 	{"for",      DM_TOKEN_FOR},
 	{"function", DM_TOKEN_FUNCTION},
 	{"if",       DM_TOKEN_IF},
+	{"import",   DM_TOKEN_IMPORT},
 	{"next",     DM_TOKEN_NEXT},
 	{"nil",      DM_TOKEN_NIL},
 	{"not",      DM_TOKEN_NOT},
@@ -745,17 +748,27 @@ static void pfunction(dm_parser *parser) {
 	}
 }
 
+static void pimport(dm_parser *parser) {
+	pconsume(parser, DM_TOKEN_LEFT_PAREN, "expect '(' after import");
+	pconsume(parser, DM_TOKEN_STRING, "expect string for import");
+	pstring(parser);
+	pconsume(parser, DM_TOKEN_RIGHT_PAREN, "expect ')' after import name");
+	dm_chunk_emit(parser->chunk, DM_OP_IMPORT);
+}
 
-int dm_compile(dm_state *dm, char *prog) {
+int dm_compile(dm_state *dm, dm_value *main, char *prog) {
 	dm_lexer lexer = {prog, prog, 1};
 	dm_parser parser = {dm, &lexer, NULL, {}, {}, false, false};
 
-	dm_value main = *(dm_value*) dm_state_get_main(dm);
-	if (dm_value_is(main, DM_TYPE_NIL)) {
+	if (main == NULL) {
+		return 1;
+	}
+
+	if (dm_value_is(*main, DM_TYPE_NIL)) {
 		parser.chunk = malloc(sizeof(dm_chunk));
 		dm_chunk_init(parser.chunk);
 	} else {
-		parser.chunk = (dm_chunk*) main.func_val->chunk;
+		parser.chunk = (dm_chunk*) main->func_val->chunk;
 		dm_chunk_reset_code(parser.chunk);
 	}
 
@@ -775,11 +788,11 @@ int dm_compile(dm_state *dm, char *prog) {
 	}
 
 	if (parser.had_error) {
-		return parser.had_error;
+		return 1;
 	}
 
-	dm_state_set_main(dm, pcompiler_end(&parser, main, 0, false));
-	return parser.had_error;
+	*main = pcompiler_end(&parser, *main, 0, false);
+	return 0;
 }
 
 
@@ -827,6 +840,7 @@ dm_parserule rules[] = {
 	[DM_TOKEN_BREAK]         = {NULL,      NULL,     DM_PREC_NONE},
 	[DM_TOKEN_NEXT]          = {NULL,      NULL,     DM_PREC_NONE},
 	[DM_TOKEN_SELF]          = {pself,     NULL,     DM_PREC_NONE},
+	[DM_TOKEN_IMPORT]        = {pimport,   NULL,     DM_PREC_NONE},
 
 	[DM_TOKEN_ERROR]         = {NULL,      NULL,     DM_PREC_NONE},
 	[DM_TOKEN_EOF]           = {NULL,      NULL,     DM_PREC_NONE}
