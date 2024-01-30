@@ -11,15 +11,20 @@
 
 static void usage(char **argv) {
 	fprintf(stderr, "Usage:\n");
-	fprintf(stderr, "  run repl  : %s\n", argv[0]);
-	fprintf(stderr, "  run script: %s <path>\n", argv[0]);
-	fprintf(stderr, "  run lsp   : %s --lsp\n", argv[0]);
-	fprintf(stderr, "  print help: %s --help\n", argv[0]);
+	fprintf(stderr, "  run repl:       %s\n", argv[0]);
+	fprintf(stderr, "  run script:     %s <path>\n", argv[0]);
+	fprintf(stderr, "  run lsp:        %s --lsp\n", argv[0]);
+	fprintf(stderr, "  print help:     %s --help\n", argv[0]);
+	fprintf(stderr, "Additional options:\n");
+	fprintf(stderr, "  enable debug:   --debug\n");
 }
 
 static void run(dm_state *dm, char *prog) {
 	dm_value ret = dm_vm_exec(dm, prog);
-	printf("Result: ");
+	if (dm_debug_enabled(dm)) {
+		printf("Result: ");
+	}
+
 	dm_value_inspect(ret);
 	printf("\n");
 }
@@ -41,7 +46,7 @@ static void repl(dm_state *dm) {
 	}
 }
 
-static void run_file(dm_state *dm, char *path) {
+static void run_file(dm_state *dm, const char *path) {
 	char *source = dm_read_file(path);
 	run(dm, source);
 	free(source);
@@ -49,20 +54,28 @@ static void run_file(dm_state *dm, char *path) {
 
 int main(int argc, char **argv) {
 	dm_state *dm = dm_open();
+	const char *script = NULL;
 
-	if (argc == 1) {
-		repl(dm);
-	} else if (argc == 2) {
-		if (strcmp(argv[1], "--help") == 0) {
+	for (int i = 1; i < argc; i++) {
+		if (strcmp(argv[i], "--help") == 0) {
 			usage(argv);
-		} else if (strcmp(argv[1], "--lsp") == 0) {
+			return 0;
+		} else if (strcmp(argv[i], "--lsp") == 0) {
 			dm_lsp_run(dm);
+			return 0;
+		} else if (strcmp(argv[i], "--debug") == 0) {
+			dm_enable_debug(dm);
 		} else {
-			run_file(dm, argv[1]);
+			if (script == NULL) {
+				script = argv[i];
+			}
 		}
+	}
+
+	if (script == NULL) {
+		repl(dm);
 	} else {
-		usage(argv);
-		return 1;
+		run_file(dm, script);
 	}
 
 	dm_close(dm);

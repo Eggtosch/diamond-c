@@ -542,9 +542,10 @@ dm_value dm_vm_exec(dm_state *dm, char *prog) {
 	stack_init(&stack);
 
 	dm_value v = exec_func(dm, main, &stack);
-	dm_chunk_decompile(main.func_val->chunk);
+	if (dm_debug_enabled(dm)) {
+		dm_chunk_decompile(main.func_val->chunk);
+	}
 
 	stack_free(&stack);
-
 	return v;
 }

@@ -7,6 +7,7 @@
 struct dm_state {
 	dm_gc gc;
 	dm_module modules[DM_TYPE_NUM_TYPES];
+	bool debug;
 	bool runtime_error;
 };
 
@@ -50,8 +51,17 @@ dm_state *dm_open(void) {
 	dm_state *dm = malloc(sizeof(dm_state));
 	dm_gc_init(dm);
 	init_modules(dm);
+	dm->debug = false;
 	dm->runtime_error = false;
 	return dm;
+}
+
+void dm_enable_debug(dm_state *dm) {
+	dm->debug = true;
+}
+
+bool dm_debug_enabled(dm_state *dm) {
+	return dm->debug;
 }
 
 void *dm_state_get_gc(dm_state *dm) {
