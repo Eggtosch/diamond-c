@@ -89,4 +89,3 @@ void dm_gc_mark(dm_state *dm, dm_gc_obj *obj) {
 		obj->mark(dm, obj);
 	}
 }
-

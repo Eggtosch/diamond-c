@@ -98,4 +98,3 @@ void dm_chunk_set_var(dm_chunk *chunk, int index, dm_value v);
 dm_value dm_chunk_get_var(dm_chunk *chunk, int index);
 
 void dm_chunk_decompile(dm_chunk *chunk);
-

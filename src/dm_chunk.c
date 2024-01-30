@@ -295,4 +295,3 @@ void dm_chunk_decompile(dm_chunk *chunk) {
 		printf("\n");
 	}
 }
-

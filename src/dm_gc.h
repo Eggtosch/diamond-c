@@ -28,4 +28,3 @@ dm_gc_obj *dm_gc_malloc(dm_state *dm, size_t size,
 void dm_gc_free(dm_state *dm, dm_gc_obj *obj);
 void dm_gc_collect(dm_state *dm, dm_gc_obj *root);
 void dm_gc_mark(dm_state *dm, dm_gc_obj *obj);
-
