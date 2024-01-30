@@ -31,9 +31,3 @@ clean:
 	$(RM) $(OBJS)
 	$(RM) $(HEADER_DEPS)
 	$(RM) -r $(OBJDIR)
-
-ALL_C_H_FILES := $(shell find . -type f -name "*.c" -o -name "*.h")
-
-.PHONY: lines
-lines:
-	@cat $(ALL_C_H_FILES) | wc -l
