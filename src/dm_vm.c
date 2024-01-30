@@ -7,13 +7,11 @@
 
 #include <dm_vm.h>
 #include <dm_compiler.h>
-#include <dm_value.h>
 #include <dm_chunk.h>
-#include <dm_int.h>
-#include <dm_float.h>
+#include <dm.h>
 
-typedef dm_value (dm_value_binary_fn)(dm_value, dm_value);
-typedef int (dm_value_cmp_fn)(dm_value, dm_value);
+typedef dm_value (dm_value_binary_fn)(dm_state*, dm_value, dm_value);
+typedef int (dm_value_cmp_fn)(dm_state*, dm_value, dm_value);
 
 typedef struct {
 	int size;
@@ -122,7 +120,7 @@ static dm_value do_import(dm_state *dm, dm_value module) {
 	}
 
 	char *file;
-	asprintf(&file, "%s/%s.dm", cwd, module.str_val->data);
+	asprintf(&file, "%s/%s.dm", cwd, dm_string_c_str(module.str_val));
 	char *prog = dm_read_file(file);
 
 	free(file);
@@ -199,8 +197,8 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				dm_value field = stack_pop(stack);
 				dm_value table = stack_pop(stack);
 				dm_module *m = dm_state_get_module(dm, table.type);
-				const char *field_s = field.str_val->data;
-				if (!m->fieldset_s(table, field_s, v)) {
+				const char *field_s = dm_string_c_str(field.str_val);
+				if (!m->fieldset_s(dm, table, field_s, v)) {
 					const char *ty = dm_value_type_str(table);
 					return runtime_error(dm, chunk, "Can't set field '%s' of <%s>", field_s, ty);
 				}
@@ -227,8 +225,8 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				dm_value table = stack_pop(stack);
 				dm_value v;
 				dm_module *m = dm_state_get_module(dm, table.type);
-				const char *field_s = field.str_val->data;
-				if (!m->fieldget_s(table, field_s, &v)) {
+				const char *field_s = dm_string_c_str(field.str_val);
+				if (!m->fieldget_s(dm, table, field_s, &v)) {
 					const char *ty = dm_value_type_str(table);
 					return runtime_error(dm, chunk, "Can't get field '%s' of <%s>", field_s, ty);
 				}
@@ -255,8 +253,8 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				dm_value table = stack_peek(stack);
 				dm_value v;
 				dm_module *m = dm_state_get_module(dm, table.type);
-				const char *field_s = field.str_val->data;
-				if (!m->fieldget_s(table, field.str_val->data, &v)) {
+				const char *field_s = dm_string_c_str(field.str_val);
+				if (!m->fieldget_s(dm, table, field_s, &v)) {
 					const char *ty = dm_value_type_str(table);
 					return runtime_error(dm, chunk, "Can't get field '%s' of <%s>", field_s, ty);
 				}
@@ -359,9 +357,9 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 			case DM_OP_NEGATE:              {
 				dm_value val = stack_pop(stack);
 				if (val.type == DM_TYPE_INT) {
-					stack_push(stack, dm_int_negate(val));
+					stack_push(stack, dm_int_negate(dm, val));
 				} else if (val.type == DM_TYPE_FLOAT) {
-					stack_push(stack, dm_float_negate(val));
+					stack_push(stack, dm_float_negate(dm, val));
 				} else {
 					return dm_value_nil();
 				}
@@ -383,7 +381,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				if (fn == NULL) {
 					return no_method_error(dm, chunk, "+", val1);
 				}
-				stack_push(stack, fn(val1, val2));
+				stack_push(stack, fn(dm, val1, val2));
 				break;
 			}
 			case DM_OP_MINUS:               {
@@ -394,7 +392,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				if (fn == NULL) {
 					return no_method_error(dm, chunk, "-", val1);
 				}
-				stack_push(stack, fn(val1, val2));
+				stack_push(stack, fn(dm, val1, val2));
 				break;
 			}
 			case DM_OP_MUL:                 {
@@ -405,7 +403,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				if (fn == NULL) {
 					return no_method_error(dm, chunk, "*", val1);
 				}
-				stack_push(stack, fn(val1, val2));
+				stack_push(stack, fn(dm, val1, val2));
 				break;
 			}
 			case DM_OP_DIV:                 {
@@ -416,7 +414,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				if (fn == NULL) {
 					return no_method_error(dm, chunk, "/", val1);
 				}
-				stack_push(stack, fn(val1, val2));
+				stack_push(stack, fn(dm, val1, val2));
 				break;
 			}
 			case DM_OP_MOD:                 {
@@ -427,7 +425,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				if (fn == NULL) {
 					return no_method_error(dm, chunk, "%", val1);
 				}
-				stack_push(stack, fn(val1, val2));
+				stack_push(stack, fn(dm, val1, val2));
 				break;
 			}
 			case DM_OP_NOTEQUAL:            {
@@ -450,7 +448,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				}
 				dm_module *m = dm_state_get_module(dm, val1.type);
 				dm_value_cmp_fn *fn = m->compare;
-				stack_push(stack, dm_value_bool(fn(val1, val2) < 0));
+				stack_push(stack, dm_value_bool(fn(dm, val1, val2) < 0));
 				break;
 			}
 			case DM_OP_LESSEQUAL:           {
@@ -461,7 +459,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				}
 				dm_module *m = dm_state_get_module(dm, val1.type);
 				dm_value_cmp_fn *fn = m->compare;
-				stack_push(stack, dm_value_bool(fn(val1, val2) <= 0));
+				stack_push(stack, dm_value_bool(fn(dm, val1, val2) <= 0));
 				break;
 			}
 			case DM_OP_GREATER:             {
@@ -472,7 +470,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				}
 				dm_module *m = dm_state_get_module(dm, val1.type);
 				dm_value_cmp_fn *fn = m->compare;
-				stack_push(stack, dm_value_bool(fn(val1, val2) > 0));
+				stack_push(stack, dm_value_bool(fn(dm, val1, val2) > 0));
 				break;
 			}
 			case DM_OP_GREATEREQUAL:        {
@@ -483,7 +481,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				}
 				dm_module *m = dm_state_get_module(dm, val1.type);
 				dm_value_cmp_fn *fn = m->compare;
-				stack_push(stack, dm_value_bool(fn(val1, val2) >= 0));
+				stack_push(stack, dm_value_bool(fn(dm, val1, val2) >= 0));
 				break;
 			}
 			case DM_OP_JUMP_IF_TRUE_OR_POP: {
@@ -550,4 +548,3 @@ dm_value dm_vm_exec(dm_state *dm, char *prog) {
 
 	return v;
 }
-

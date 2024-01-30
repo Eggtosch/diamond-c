@@ -1,17 +1,18 @@
 #include <stdio.h>
 #include <dm_bool.h>
 
-static int dm_bool_compare(dm_value self, dm_value other) {
+static int dm_bool_compare(dm_state *dm, dm_value self, dm_value other) {
+	(void) dm;
 	return self.bool_val - other.bool_val;
 }
 
-static bool dm_bool_fieldset(dm_value self, const char *field, dm_value v) {
-	(void) self, (void) field, (void) v;
+static bool dm_bool_fieldset(dm_state *dm, dm_value self, const char *field, dm_value v) {
+	(void) dm, (void) self, (void) field, (void) v;
 	return false;
 }
 
-static bool dm_bool_fieldget(dm_value self, const char *field, dm_value *v) {
-	(void) self, (void) field, (void) v;
+static bool dm_bool_fieldget(dm_state *dm, dm_value self, const char *field, dm_value *v) {
+	(void) dm, (void) self, (void) field, (void) v;
 	return false;
 }
 

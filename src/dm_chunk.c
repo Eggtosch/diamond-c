@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <dm_chunk.h>
+#include <dm.h>
 
 void dm_chunk_init(dm_chunk *chunk) {
 	*chunk = (dm_chunk){
@@ -77,7 +78,7 @@ int dm_chunk_index_of_string_constant(dm_chunk *chunk, const char *s, size_t len
 	for (int i = 0; i < chunk->constsize; i++) {
 		dm_value c = chunk->consts[i];
 		if (dm_value_is(c, DM_TYPE_STRING)) {
-			if ((size_t) c.str_val->size == len && strncmp(c.str_val->data, s, len) == 0) {
+			if (dm_string_size(c.str_val) == len && strncmp(dm_string_c_str(c.str_val), s, len) == 0) {
 				return i;
 			}
 		}

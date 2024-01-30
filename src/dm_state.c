@@ -1,13 +1,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <dm_state.h>
-#include <dm_value.h>
+#include <dm.h>
 #include <dm_gc.h>
-#include <dm_nil.h>
-#include <dm_bool.h>
-#include <dm_int.h>
-#include <dm_float.h>
-#include <dm_string.h>
 
 struct dm_state {
 	dm_gc gc;
@@ -21,7 +16,7 @@ static void init_modules(dm_state *dm) {
 	dm->modules[DM_TYPE_INT] = dm_int_init(dm);
 	dm->modules[DM_TYPE_FLOAT] = dm_float_init(dm);
 	dm->modules[DM_TYPE_STRING] = dm_string_init(dm);
-	dm->modules[DM_TYPE_ARRAY] = (dm_module){0};
+	dm->modules[DM_TYPE_ARRAY] = dm_array_init(dm);
 	dm->modules[DM_TYPE_TABLE] = (dm_module){0};
 	dm->modules[DM_TYPE_FUNCTION] = (dm_module){0};
 }

@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <dm_value.h>
+#include <dm.h>
 #include <dm_gc.h>
 #include <dm_chunk.h>
 
@@ -22,51 +22,6 @@ dm_value dm_value_int(dm_int int_val) {
 
 dm_value dm_value_float(dm_float float_val) {
 	return (dm_value){DM_TYPE_FLOAT, {.float_val = float_val}};
-}
-
-static void string_free(dm_state *dm, struct dm_gc_obj *obj) {
-	(void) dm;
-	dm_string *str = (dm_string*) obj;
-	free(str->data);
-}
-
-dm_value dm_value_string_len(dm_state *dm, const char *s, int size) {
-	dm_string *str = (dm_string*) dm_gc_malloc(dm, sizeof(dm_string), NULL, string_free);
-	str->size = size;
-	str->data = malloc(size + 1);
-	memcpy(str->data, s, size);
-	str->data[size] = '\0';
-	return (dm_value){DM_TYPE_STRING, {.str_val = str}};
-}
-
-static void array_mark(dm_state *dm, struct dm_gc_obj *obj) {
-	dm_array *arr = (dm_array*) obj;
-	dm_value *data = (dm_value*) arr->values;
-	for (int i = 0; i < arr->size; i++) {
-		if (dm_value_is_gc_obj(data[i])) {
-			dm_gc_mark(dm, data[i].gc_obj);
-		}
-	}
-}
-
-static void array_free(dm_state *dm, struct dm_gc_obj *obj) {
-	dm_array *arr = (dm_array*) obj;
-	dm_value *data = (dm_value*) arr->values;
-	for (int i = 0; i < arr->size; i++) {
-		if (dm_value_is_gc_obj(data[i])) {
-			dm_gc_mark(dm, data[i].gc_obj);
-		}
-	}
-	free(arr->values);
-}
-
-dm_value dm_value_array(dm_state *dm, int capacity) {
-	dm_array *arr = (dm_array*) dm_gc_malloc(dm, sizeof(dm_array), array_mark, array_free);
-	arr->capacity = capacity < 16 ? 16 : capacity;
-	arr->size = capacity;
-	arr->values = malloc(sizeof(dm_value) * arr->capacity);
-	memset(arr->values, 0, sizeof(dm_value) * arr->capacity);
-	return (dm_value){DM_TYPE_ARRAY, {.arr_val = arr}};
 }
 
 static bool table_is_invalid_entry(dm_value v) {
@@ -145,24 +100,6 @@ bool dm_value_is(dm_value v, dm_type t) {
 	return v.type == t;
 }
 
-static bool string_equal(dm_string *s1, dm_string *s2) {
-	return s1->size == s2->size && memcmp(s1->data, s2->data, s1->size) == 0;
-}
-
-static bool array_equal(dm_array *a1, dm_array *a2) {
-	if (a1->size != a2->size) {
-		return false;
-	}
-	for (int i = 0; i < a1->size; i++) {
-		dm_value v1 = ((dm_value*) a1->values)[i];
-		dm_value v2 = ((dm_value*) a2->values)[i];
-		if (!dm_value_equal(v1, v2)) {
-			return false;
-		}
-	}
-	return true;
-}
-
 static bool table_equal(dm_table *t1, dm_table *t2) {
 	return t1 == t2;
 }
@@ -176,28 +113,12 @@ bool dm_value_equal(dm_value v1, dm_value v2) {
 		case DM_TYPE_BOOL:     return v1.bool_val  == v2.bool_val;
 		case DM_TYPE_INT:      return v1.int_val   == v2.int_val;
 		case DM_TYPE_FLOAT:    return v1.float_val == v2.float_val;
-		case DM_TYPE_STRING:   return string_equal(v1.str_val, v2.str_val);
-		case DM_TYPE_ARRAY:    return array_equal(v1.arr_val, v2.arr_val);
+		case DM_TYPE_STRING:   return dm_string_equal(v1.str_val, v2.str_val);
+		case DM_TYPE_ARRAY:    return dm_array_equal(v1.arr_val, v2.arr_val);
 		case DM_TYPE_TABLE:    return table_equal(v1.table_val, v2.table_val);
 		case DM_TYPE_FUNCTION: return v1.func_val->chunk == v2.func_val->chunk;
 		default:			   return false;
 	}
-}
-
-void array_inspect(dm_array *a) {
-	printf("[");
-	if (a->size == 0) {
-		printf("]");
-		return;
-	}
-	for (int i = 0; i < a->size - 1; i++) {
-		dm_value v = ((dm_value*) a->values)[i];
-		dm_value_inspect(v);
-		printf(", ");
-	}
-	dm_value v = ((dm_value*) a->values)[a->size - 1];
-	dm_value_inspect(v);
-	printf("]");
 }
 
 void table_inspect(dm_table *t) {
@@ -228,14 +149,14 @@ void table_inspect(dm_table *t) {
 
 void dm_value_inspect(dm_value v) {
 	switch (v.type) {
-		case DM_TYPE_NIL:      printf("nil");                                        return;
-		case DM_TYPE_BOOL:     printf(v.bool_val ? "true" : "false");                return;
-		case DM_TYPE_INT:      printf("%ld", v.int_val);                             return;
-		case DM_TYPE_FLOAT:    printf("%g", v.float_val);                            return;
-		case DM_TYPE_STRING:   printf("\"%.*s\"", v.str_val->size, v.str_val->data); return;
-		case DM_TYPE_ARRAY:    array_inspect(v.arr_val);                             return;
-		case DM_TYPE_TABLE:    table_inspect(v.table_val);                           return;
-		case DM_TYPE_FUNCTION: printf("<function %p>", v.func_val);                  return;
+		case DM_TYPE_NIL:      printf("nil");                         return;
+		case DM_TYPE_BOOL:     printf(v.bool_val ? "true" : "false"); return;
+		case DM_TYPE_INT:      printf("%ld", v.int_val);              return;
+		case DM_TYPE_FLOAT:    printf("%g", v.float_val);             return;
+		case DM_TYPE_STRING:   dm_string_inspect(v.str_val);          return;
+		case DM_TYPE_ARRAY:    dm_array_inspect(v.arr_val);           return;
+		case DM_TYPE_TABLE:    table_inspect(v.table_val);            return;
+		case DM_TYPE_FUNCTION: printf("<function %p>", v.func_val);   return;
 		default:			 return;
 	}
 }
@@ -250,50 +171,6 @@ bool dm_value_is_gc_obj(dm_value v) {
 const char *dm_value_type_str(dm_value v) {
 	static const char *types[] = {"nil", "bool", "integer", "float", "string", "array", "table", "function"};
 	return types[v.type];
-}
-
-void dm_value_array_set(dm_value a, dm_value index, dm_value v) {
-	if (!dm_value_is(a, DM_TYPE_ARRAY)) {
-		// error
-		return;
-	}
-
-	if (!dm_value_is(index, DM_TYPE_INT)) {
-		// error
-		return;
-	}
-
-	int _index = index.int_val;
-	dm_array *arr = a.arr_val;
-	if (_index < 0 || _index >= arr->size) {
-		// error
-		return;
-	}
-
-	dm_value *data = (dm_value*) arr->values;
-	data[_index] = v;
-}
-
-dm_value dm_value_array_get(dm_value a, dm_value index) {
-	if (!dm_value_is(a, DM_TYPE_ARRAY)) {
-		// error
-		return dm_value_nil();
-	}
-
-	if (!dm_value_is(index, DM_TYPE_INT)) {
-		// error
-		return dm_value_nil();
-	}
-
-	int _index = index.int_val;
-	dm_array *arr = a.arr_val;
-	if (_index < 0 || _index >= arr->size) {
-		// error
-		return dm_value_nil();
-	}
-
-	dm_value *data = (dm_value*) arr->values;
-	return data[_index];
 }
 
 void dm_value_table_set(dm_value t, dm_value key, dm_value value) {
@@ -338,4 +215,3 @@ dm_value dm_value_table_get(dm_value t, dm_value key) {
 
 	return dm_value_nil();
 }
-

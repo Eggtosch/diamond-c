@@ -2,8 +2,8 @@
 
 #include <stdlib.h>
 #include <stdbool.h>
-#include <dm.h>
 
+typedef struct dm_state dm_state;
 typedef struct dm_gc dm_gc;
 
 typedef struct dm_gc_obj {
