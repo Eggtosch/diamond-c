@@ -19,8 +19,8 @@ static void usage(char **argv) {
 	fprintf(stderr, "  enable debug:   --debug\n");
 }
 
-static void run(dm_state *dm, char *prog) {
-	dm_value ret = dm_vm_exec(dm, prog);
+static void run(dm_state *dm, char *prog, bool repl) {
+	dm_value ret = dm_vm_exec(dm, prog, repl);
 	if (dm_debug_enabled(dm)) {
 		printf("Result: ");
 	}
@@ -41,14 +41,14 @@ static void repl(dm_state *dm) {
 			break;
 		}
 		add_history(line);
-		run(dm, line);
+		run(dm, line, true);
 		free(line);
 	}
 }
 
 static void run_file(dm_state *dm, const char *path) {
 	char *source = dm_read_file(path);
-	run(dm, source);
+	run(dm, source, false);
 	free(source);
 }
 

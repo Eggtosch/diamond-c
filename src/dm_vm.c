@@ -125,7 +125,7 @@ static dm_value do_import(dm_state *dm, dm_value module) {
 
 	free(file);
 	free(cwd);
-	return dm_vm_exec(dm, prog);
+	return dm_vm_exec(dm, prog, false);
 }
 
 static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
@@ -531,19 +531,27 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 	return dm_value_nil();
 }
 
-dm_value dm_vm_exec(dm_state *dm, char *prog) {
+dm_value dm_vm_exec(dm_state *dm, char *prog, bool repl) {
 	dm_state_set_error(dm, NULL);
-	dm_value main = dm_value_nil();
-	if (dm_compile(dm, &main, prog) != 0) {
+	dm_value _nil = dm_value_nil();
+	dm_value *main;
+
+	if (repl) {
+		main = dm_state_get_main(dm);
+	} else {
+		main = &_nil;
+	}
+
+	if (dm_compile(dm, main, prog) != 0) {
 		return dm_value_nil();
 	}
 
 	dm_stack stack;
 	stack_init(&stack);
 
-	dm_value v = exec_func(dm, main, &stack);
+	dm_value v = exec_func(dm, *main, &stack);
 	if (dm_debug_enabled(dm)) {
-		dm_chunk_decompile(main.func_val->chunk);
+		dm_chunk_decompile(main->func_val->chunk);
 	}
 
 	stack_free(&stack);
