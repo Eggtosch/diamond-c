@@ -61,6 +61,7 @@ syn match dmComment "\%^#!.*"
 
 syn keyword dmConstant nil true false
 syn keyword dmImport import
+syn keyword dmGlobal global
 
 " strings
 syn match dmSpecial contained #\\[\\abfnrtv'"[\]]\|\\[x]\x\{,3}\|\\[[:digit:]]\{,3}#
@@ -85,6 +86,7 @@ syn region dmTableBlock transparent matchgroup=dmTable start="{" end="}" contain
 " Only when an item doesn't have highlighting yet
 
 hi def link dmImport           Keyword
+hi def link dmGlobal           Keyword
 hi def link dmStatement        Statement
 hi def link dmRepeat           Repeat
 hi def link dmFor              Repeat

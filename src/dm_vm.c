@@ -157,6 +157,20 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				dm_chunk_set_var(chunk, index, v);
 				break;
 			}
+			case DM_OP_VARSET_UP:           {
+				int ups = read8(chunk);
+				int index = read16(chunk);
+				dm_chunk *upchunk = chunk;
+				for (int i = 0; i < ups; i++) {
+					upchunk = (dm_chunk*) upchunk->parent;
+					if (upchunk == NULL) {
+						return runtime_error(dm, chunk, "Can't set upvalue from up chunk %d", ups);
+					}
+				}
+				dm_value v = stack_peek(stack);
+				dm_chunk_set_var(upchunk, index, v);
+				break;
+			}
 			case DM_OP_VARGET:              {
 				int index = read16(chunk);
 				dm_value v = dm_chunk_get_var(chunk, index);

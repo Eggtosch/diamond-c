@@ -228,6 +228,7 @@ static int decompile_op(uint8_t *code) {
 	switch (opcode) {
 		case DM_OP_IMPORT:				printf("IMPORT\n"); return 1;
 		case DM_OP_VARSET:				printf("VARSET %d\n", code[1] << 8 | code[2]); return 3;
+		case DM_OP_VARSET_UP:			printf("VARSET_UP (%d) %d\n", code[1], code[2] << 8 | code[3]); return 4;
 		case DM_OP_VARGET:				printf("VARGET %d\n", code[1] << 8 | code[2]); return 3;
 		case DM_OP_VARGET_UP:			printf("VARGET_UP (%d) %d\n", code[1], code[2] << 8 | code[3]); return 4;
 		case DM_OP_FIELDSET:			printf("FIELDSET\n"); return 1;

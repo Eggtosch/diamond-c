@@ -29,7 +29,7 @@ typedef enum {
 	DM_TOKEN_OR, DM_TOKEN_RETURN, DM_TOKEN_SELF, DM_TOKEN_THEN, DM_TOKEN_TRUE,
 	DM_TOKEN_WHILE,
 
-	DM_TOKEN_IMPORT,
+	DM_TOKEN_IMPORT, DM_TOKEN_GLOBAL,
 
 	DM_TOKEN_ERROR, DM_TOKEN_EOF
 } dm_tokentype;
@@ -62,6 +62,7 @@ static struct reserved_word reserved_words[] = {
 	{"false",    DM_TOKEN_FALSE},
 	{"for",      DM_TOKEN_FOR},
 	{"function", DM_TOKEN_FUNCTION},
+	{"global",   DM_TOKEN_GLOBAL},
 	{"if",       DM_TOKEN_IF},
 	{"import",   DM_TOKEN_IMPORT},
 	{"next",     DM_TOKEN_NEXT},
@@ -348,25 +349,37 @@ static void pident(dm_parser *parser) {
 		int ident = dm_chunk_add_var(parser->chunk, var, len);
 		dm_chunk_emit_arg16(parser->chunk, DM_OP_VARSET, ident);
 	} else {
-		dm_chunk *chunk = parser->chunk;
-		int ups = 0;
-		int index = -1;
-		while (chunk != NULL) {
-			index = dm_chunk_find_var(chunk, var, len);
-			if (index != -1) {
-				break;
-			}
-			ups++;
-			chunk = (dm_chunk*) chunk->parent;
-		}
+		int index = dm_chunk_find_var(parser->chunk, var, len);
 		if (index == -1) {
-			perr_at(parser, &parser->previous, "variable does not exist!");
+			perr_at(parser, &parser->previous, "variable does not exist in current scope!");
 		}
-		if (ups == 0) {
-			dm_chunk_emit_arg16(parser->chunk, DM_OP_VARGET, index);
-		} else {
-			dm_chunk_emit_arg8_arg16(parser->chunk, DM_OP_VARGET_UP, ups, index);
+		dm_chunk_emit_arg16(parser->chunk, DM_OP_VARGET, index);
+	}
+}
+
+static void pglobal(dm_parser *parser) {
+	pconsume(parser, DM_TOKEN_IDENTIFIER, "expect identifier after global keyword");
+	const char *var = parser->previous.begin;
+	int len = parser->previous.len;
+	dm_chunk *chunk = (dm_chunk*) parser->chunk->parent;
+	int ups = 1;
+	int index = -1;
+	while (chunk != NULL) {
+		index = dm_chunk_find_var(chunk, var, len);
+		if (index != -1) {
+			break;
 		}
+		ups++;
+		chunk = (dm_chunk*) chunk->parent;
+	}
+	if (index == -1) {
+		perr_at(parser, &parser->previous, "global variable does not exist!");
+	}
+	if (pmatch(parser, DM_TOKEN_EQUAL)) {
+		pexpression(parser);
+		dm_chunk_emit_arg8_arg16(parser->chunk, DM_OP_VARSET_UP, ups, index);
+	} else {
+		dm_chunk_emit_arg8_arg16(parser->chunk, DM_OP_VARGET_UP, ups, index);
 	}
 }
 
@@ -841,6 +854,7 @@ dm_parserule rules[] = {
 	[DM_TOKEN_NEXT]          = {NULL,      NULL,     DM_PREC_NONE},
 	[DM_TOKEN_SELF]          = {pself,     NULL,     DM_PREC_NONE},
 	[DM_TOKEN_IMPORT]        = {pimport,   NULL,     DM_PREC_NONE},
+	[DM_TOKEN_GLOBAL]        = {pglobal,   NULL,     DM_PREC_NONE},
 
 	[DM_TOKEN_ERROR]         = {NULL,      NULL,     DM_PREC_NONE},
 	[DM_TOKEN_EOF]           = {NULL,      NULL,     DM_PREC_NONE}
