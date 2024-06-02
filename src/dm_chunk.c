@@ -156,6 +156,18 @@ void dm_chunk_emit_arg8_arg16(dm_chunk *chunk, dm_opcode opcode, int arg8, int a
 	emit_byte(chunk, (uint16_t) arg16 & 0xff);
 }
 
+void dm_chunk_emit_arg8_arg8_arg16(dm_chunk *chunk, dm_opcode opcode, int arg8_1, int arg8_2, int arg16) {
+	if (arg8_1 >= 1 << 8 || arg8_2 >= 1 << 8 || arg16 >= 1 << 16) {
+		return;
+	}
+
+	emit_byte(chunk, (uint8_t) opcode);
+	emit_byte(chunk, (uint8_t) arg8_1);
+	emit_byte(chunk, (uint8_t) arg8_2);
+	emit_byte(chunk, (uint16_t) arg16 >> 8);
+	emit_byte(chunk, (uint16_t) arg16 & 0xff);
+}
+
 int dm_chunk_emit_jump(dm_chunk *chunk, dm_opcode opcode, int dest) {
 	if (dest >= 1 << 16) {
 		return 0;
@@ -228,11 +240,15 @@ static int decompile_op(uint8_t *code) {
 	switch (opcode) {
 		case DM_OP_IMPORT:				printf("IMPORT\n"); return 1;
 		case DM_OP_VARSET:				printf("VARSET %d\n", code[1] << 8 | code[2]); return 3;
+		case DM_OP_VARGETOPSET:			printf("VARGETOPSET %d %d\n", code[1], code[2] << 8 | code[3]); return 4;
 		case DM_OP_VARSET_UP:			printf("VARSET_UP (%d) %d\n", code[1], code[2] << 8 | code[3]); return 4;
+		case DM_OP_VARGETOPSET_UP:		printf("VARGETOPSET_UP %d (%d) %d\n", code[1], code[2], code[3] << 8 | code[4]); return 5;
 		case DM_OP_VARGET:				printf("VARGET %d\n", code[1] << 8 | code[2]); return 3;
 		case DM_OP_VARGET_UP:			printf("VARGET_UP (%d) %d\n", code[1], code[2] << 8 | code[3]); return 4;
 		case DM_OP_FIELDSET:			printf("FIELDSET\n"); return 1;
+		case DM_OP_FIELDGETOPSET:		printf("FIELDGETOPSET %d\n", code[1]); return 2;
 		case DM_OP_FIELDSET_S:			printf("FIELDSET_S\n"); return 1;
+		case DM_OP_FIELDGETOPSET_S:		printf("FIELDGETOPSET_S %d\n", code[1]); return 2;
 		case DM_OP_FIELDGET:			printf("FIELDGET\n"); return 1;
 		case DM_OP_FIELDGET_S:			printf("FIELDGET_S\n"); return 1;
 		case DM_OP_FIELDGET_PUSHPARENT:	printf("FIELDGET_PUSHPARENT\n"); return 1;

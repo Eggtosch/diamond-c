@@ -22,6 +22,9 @@ typedef enum {
 	DM_TOKEN_GREATER, DM_TOKEN_GREATER_EQUAL,
 	DM_TOKEN_LESS, DM_TOKEN_LESS_EQUAL,
 
+	DM_TOKEN_PLUS_EQUAL, DM_TOKEN_MINUS_EQUAL, DM_TOKEN_STAR_EQUAL, DM_TOKEN_SLASH_EQUAL,
+	DM_TOKEN_PERCENT_EQUAL,
+
 	DM_TOKEN_IDENTIFIER, DM_TOKEN_STRING, DM_TOKEN_INTEGER, DM_TOKEN_FLOAT,
 
 	DM_TOKEN_AND, DM_TOKEN_BREAK, DM_TOKEN_DO, DM_TOKEN_ELSE, DM_TOKEN_ELSIF, DM_TOKEN_END, DM_TOKEN_FALSE,
@@ -211,11 +214,11 @@ dm_token lex(dm_lexer *lexer) {
 		case ':': return ltoken_new(lexer, DM_TOKEN_COLON);
 		case ',': return ltoken_new(lexer, DM_TOKEN_COMMA);
 		case '.': return ltoken_new(lexer, DM_TOKEN_DOT);
-		case '-': return ltoken_new(lexer, DM_TOKEN_MINUS);
-		case '+': return ltoken_new(lexer, DM_TOKEN_PLUS);
-		case '/': return ltoken_new(lexer, DM_TOKEN_SLASH);
-		case '%': return ltoken_new(lexer, DM_TOKEN_PERCENT);
-		case '*': return ltoken_new(lexer, DM_TOKEN_STAR);
+		case '-': return ltoken_new(lexer, lmatch(lexer, '=') ? DM_TOKEN_MINUS_EQUAL   : DM_TOKEN_MINUS);
+		case '+': return ltoken_new(lexer, lmatch(lexer, '=') ? DM_TOKEN_PLUS_EQUAL    : DM_TOKEN_PLUS);
+		case '/': return ltoken_new(lexer, lmatch(lexer, '=') ? DM_TOKEN_SLASH_EQUAL   : DM_TOKEN_SLASH);
+		case '%': return ltoken_new(lexer, lmatch(lexer, '=') ? DM_TOKEN_PERCENT_EQUAL : DM_TOKEN_PERCENT);
+		case '*': return ltoken_new(lexer, lmatch(lexer, '=') ? DM_TOKEN_STAR_EQUAL    : DM_TOKEN_STAR);
 		case '!': return ltoken_new(lexer, lmatch(lexer, '=') ? DM_TOKEN_BANG_EQUAL    : DM_TOKEN_BANG);
 		case '=': return ltoken_new(lexer, lmatch(lexer, '=') ? DM_TOKEN_EQUAL_EQUAL   : DM_TOKEN_EQUAL);
 		case '<': return ltoken_new(lexer, lmatch(lexer, '=') ? DM_TOKEN_LESS_EQUAL    : DM_TOKEN_LESS);
@@ -321,6 +324,27 @@ static void pconsume(dm_parser *parser, dm_tokentype type, const char *message) 
 	perr(parser, message);
 }
 
+static bool pisopassign(dm_parser *parser) {
+	return pmatch(parser, DM_TOKEN_PLUS_EQUAL)
+		|| pmatch(parser, DM_TOKEN_MINUS_EQUAL)
+		|| pmatch(parser, DM_TOKEN_STAR_EQUAL)
+		|| pmatch(parser, DM_TOKEN_SLASH_EQUAL)
+		|| pmatch(parser, DM_TOKEN_PERCENT_EQUAL);
+}
+
+static dm_opassign pget_opassign(dm_parser *parser) {
+	switch (parser->previous.type) {
+		case DM_TOKEN_PLUS_EQUAL:    return DM_OPASSIGN_PLUS;
+		case DM_TOKEN_MINUS_EQUAL:   return DM_OPASSIGN_MINUS;
+		case DM_TOKEN_STAR_EQUAL:    return DM_OPASSIGN_MUL;
+		case DM_TOKEN_SLASH_EQUAL:   return DM_OPASSIGN_DIV;
+		case DM_TOKEN_PERCENT_EQUAL: return DM_OPASSIGN_MOD;
+		default: perr_at(parser, &parser->previous, "internal error: ptoken_to_opassign");
+	}
+
+	return -1;
+}
+
 static void pparse_precedence(dm_parser *parser, dm_precedence prec) {
 	pnext(parser);
 	parsefn f = pget_rule(parser->previous.type)->prefix;
@@ -349,6 +373,14 @@ static void pident(dm_parser *parser) {
 		pexpression(parser);
 		int ident = dm_chunk_add_var(parser->chunk, var, len);
 		dm_chunk_emit_arg16(parser->chunk, DM_OP_VARSET, ident);
+	} else if (pisopassign(parser)) {
+		int opassign = pget_opassign(parser);
+		pexpression(parser);
+		int index = dm_chunk_find_var(parser->chunk, var, len);
+		if (index == -1) {
+			perr_at(parser, &parser->previous, "variable does not exist in current scope!");
+		}
+		dm_chunk_emit_arg8_arg16(parser->chunk, DM_OP_VARGETOPSET, opassign, index);
 	} else {
 		int index = dm_chunk_find_var(parser->chunk, var, len);
 		if (index == -1) {
@@ -379,6 +411,10 @@ static void pglobal(dm_parser *parser) {
 	if (pmatch(parser, DM_TOKEN_EQUAL)) {
 		pexpression(parser);
 		dm_chunk_emit_arg8_arg16(parser->chunk, DM_OP_VARSET_UP, ups, index);
+	} else if (pisopassign(parser)) {
+		int opassign = pget_opassign(parser);
+		pexpression(parser);
+		dm_chunk_emit_arg8_arg8_arg16(parser->chunk, DM_OP_VARGETOPSET_UP, opassign, ups, index);
 	} else {
 		dm_chunk_emit_arg8_arg16(parser->chunk, DM_OP_VARGET_UP, ups, index);
 	}
@@ -402,6 +438,10 @@ static void parrayget(dm_parser *parser) {
 	if (pmatch(parser, DM_TOKEN_EQUAL)) {
 		pexpression(parser);
 		dm_chunk_emit(parser->chunk, DM_OP_FIELDSET);
+	} else if (pisopassign(parser)) {
+		int opassign = pget_opassign(parser);
+		pexpression(parser);
+		dm_chunk_emit_arg8(parser->chunk, DM_OP_FIELDGETOPSET, opassign);
 	} else {
 		dm_chunk_emit(parser->chunk, DM_OP_FIELDGET);
 	}
@@ -505,6 +545,10 @@ static void pdot(dm_parser *parser) {
 	if (pmatch(parser, DM_TOKEN_EQUAL)) {
 		pexpression(parser);
 		dm_chunk_emit(parser->chunk, DM_OP_FIELDSET_S);
+	} else if (pisopassign(parser)) {
+		int opassign = pget_opassign(parser);
+		pexpression(parser);
+		dm_chunk_emit_arg8(parser->chunk, DM_OP_FIELDGETOPSET_S, opassign);
 	} else if (pmatch(parser, DM_TOKEN_LEFT_PAREN)) {
 		dm_chunk_emit(parser->chunk, DM_OP_FIELDGET_S_PUSHPARENT);
 		pcall_with_parent(parser);
@@ -833,6 +877,11 @@ dm_parserule rules[] = {
 	[DM_TOKEN_GREATER_EQUAL] = {NULL,      pbinary,  DM_PREC_COMPARISON},
 	[DM_TOKEN_LESS]          = {NULL,      pbinary,  DM_PREC_COMPARISON},
 	[DM_TOKEN_LESS_EQUAL]    = {NULL,      pbinary,  DM_PREC_COMPARISON},
+	[DM_TOKEN_PLUS_EQUAL]    = {NULL,      passign,  DM_PREC_ASSIGNEMENT},
+	[DM_TOKEN_MINUS_EQUAL]   = {NULL,      passign,  DM_PREC_ASSIGNEMENT},
+	[DM_TOKEN_STAR_EQUAL]    = {NULL,      passign,  DM_PREC_ASSIGNEMENT},
+	[DM_TOKEN_SLASH_EQUAL]   = {NULL,      passign,  DM_PREC_ASSIGNEMENT},
+	[DM_TOKEN_PERCENT_EQUAL] = {NULL,      passign,  DM_PREC_ASSIGNEMENT},
 	[DM_TOKEN_IDENTIFIER]    = {pident,    NULL,     DM_PREC_NONE},
 	[DM_TOKEN_STRING]        = {pstring,   NULL,     DM_PREC_NONE},
 	[DM_TOKEN_INTEGER]       = {pinteger,  NULL,     DM_PREC_NONE},

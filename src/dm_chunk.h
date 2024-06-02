@@ -4,13 +4,25 @@
 #include <dm_value.h>
 
 typedef enum {
+	DM_OPASSIGN_PLUS,
+	DM_OPASSIGN_MINUS,
+	DM_OPASSIGN_MUL,
+	DM_OPASSIGN_DIV,
+	DM_OPASSIGN_MOD,
+} dm_opassign;
+
+typedef enum {
 	DM_OP_IMPORT,               // op8 | [string] -> [value]
 	DM_OP_VARSET,               // op8 index16 | [value] -> [value]
+	DM_OP_VARGETOPSET,          // op8 opassign8 index16 | [value] -> [value]
 	DM_OP_VARSET_UP,            // op8 up8 index16 | [value] -> [value]
+	DM_OP_VARGETOPSET_UP,       // op8 opassign8 up8 index16 | [value] -> [value]
 	DM_OP_VARGET,               // op8 index16 | [] -> [value]
 	DM_OP_VARGET_UP,			// op8 up8 index16 | [] -> [value]
 	DM_OP_FIELDSET,             // op8 | [table, field, value] -> [value]
+	DM_OP_FIELDGETOPSET,        // op8 opassign8 | [table, field, value] -> [value]
 	DM_OP_FIELDSET_S,			// op8 | [table, string, value] -> [value]
+	DM_OP_FIELDGETOPSET_S,      // op8 opassign8 | [table, string, value] -> [value]
 	DM_OP_FIELDGET,             // op8 | [table, field] -> [value]
 	DM_OP_FIELDGET_S,			// op8 | [table, string] -> [value]
 	DM_OP_FIELDGET_PUSHPARENT,  // op8 | [table, field] -> [table, value]
@@ -90,6 +102,7 @@ void dm_chunk_emit(dm_chunk *chunk, dm_opcode opcode);
 void dm_chunk_emit_arg8(dm_chunk *chunk, dm_opcode opcode, int arg8);
 void dm_chunk_emit_arg16(dm_chunk *chunk, dm_opcode opcode, int arg16);
 void dm_chunk_emit_arg8_arg16(dm_chunk *chunk, dm_opcode opcode, int arg8, int arg16);
+void dm_chunk_emit_arg8_arg8_arg16(dm_chunk *chunk, dm_opcode opcode, int arg8_1, int arg8_2, int arg16);
 int  dm_chunk_emit_jump(dm_chunk *chunk, dm_opcode opcode, int dest);
 void dm_chunk_patch_jump(dm_chunk *chunk, int addr_location);
 

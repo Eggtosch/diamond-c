@@ -128,6 +128,36 @@ static dm_value do_import(dm_state *dm, dm_value module) {
 	return dm_vm_exec(dm, prog, false);
 }
 
+static const char *opassign_to_string(dm_opassign op) {
+	switch (op) {
+		case DM_OPASSIGN_PLUS:  return "+";
+		case DM_OPASSIGN_MINUS: return "-";
+		case DM_OPASSIGN_MUL:   return "*";
+		case DM_OPASSIGN_DIV:   return "/";
+		case DM_OPASSIGN_MOD:   return "%";
+	}
+
+	return "";
+}
+
+static dm_value do_opassign(dm_state *dm, dm_chunk *chunk, dm_opassign op, dm_value old, dm_value v) {
+	dm_module *m = dm_state_get_module(dm, old.type);
+	dm_value_binary_fn *fn = NULL;
+	switch (op) {
+		case DM_OPASSIGN_PLUS:  fn = m->add; break;
+		case DM_OPASSIGN_MINUS: fn = m->sub; break;
+		case DM_OPASSIGN_MUL:   fn = m->mul; break;
+		case DM_OPASSIGN_DIV:   fn = m->div; break;
+		case DM_OPASSIGN_MOD:   fn = m->mod; break;
+	}
+
+	if (fn == NULL) {
+		return no_method_error(dm, chunk, opassign_to_string(op), old);
+	}
+
+	return fn(dm, old, v);
+}
+
 static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 	dm_chunk *chunk = (dm_chunk*) f.func_val->chunk;
 	chunk->ip = 0;
@@ -157,6 +187,16 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				dm_chunk_set_var(chunk, index, v);
 				break;
 			}
+			case DM_OP_VARGETOPSET:         {
+				int opassign = read8(chunk);
+				int index = read16(chunk);
+				dm_value old = dm_chunk_get_var(chunk, index);
+				dm_value v = stack_pop(stack);
+				v = do_opassign(dm, chunk, opassign, old, v);
+				stack_push(stack, v);
+				dm_chunk_set_var(chunk, index, v);
+				break;
+			}
 			case DM_OP_VARSET_UP:           {
 				int ups = read8(chunk);
 				int index = read16(chunk);
@@ -168,6 +208,24 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 					}
 				}
 				dm_value v = stack_peek(stack);
+				dm_chunk_set_var(upchunk, index, v);
+				break;
+			}
+			case DM_OP_VARGETOPSET_UP:      {
+				int opassign = read8(chunk);
+				int ups = read8(chunk);
+				int index = read16(chunk);
+				dm_chunk *upchunk = chunk;
+				for (int i = 0; i < ups; i++) {
+					upchunk = (dm_chunk*) upchunk->parent;
+					if (upchunk == NULL) {
+						return runtime_error(dm, chunk, "Can't set upvalue from up chunk %d", ups);
+					}
+				}
+				dm_value old = dm_chunk_get_var(upchunk, index);
+				dm_value v = stack_pop(stack);
+				v = do_opassign(dm, chunk, opassign, old, v);
+				stack_push(stack, v);
 				dm_chunk_set_var(upchunk, index, v);
 				break;
 			}
@@ -206,12 +264,52 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				stack_push(stack, v);
 				break;
 			}
+			case DM_OP_FIELDGETOPSET:       {
+				int opassign = read8(chunk);
+				dm_value v = stack_pop(stack);
+				dm_value field = stack_pop(stack);
+				dm_value table = stack_pop(stack);
+				if (table.type == DM_TYPE_ARRAY) {
+					dm_value old = dm_value_array_get(table, field);
+					v = do_opassign(dm, chunk, opassign, old, v);
+					dm_value_array_set(table, field, v);
+				} else if (table.type == DM_TYPE_TABLE) {
+					dm_value old = dm_value_table_get(table, field);
+					v = do_opassign(dm, chunk, opassign, old, v);
+					dm_value_table_set(table, field, v);
+				} else {
+					const char *msg = "Can't set field of <%s>, expected <array> or <table>";
+					return runtime_error(dm, chunk, msg, dm_value_type_str(field));
+				}
+				stack_push(stack, v);
+				break;
+			}
 			case DM_OP_FIELDSET_S:			{
 				dm_value v = stack_pop(stack);
 				dm_value field = stack_pop(stack);
 				dm_value table = stack_pop(stack);
 				dm_module *m = dm_state_get_module(dm, table.type);
 				const char *field_s = dm_string_c_str(field.str_val);
+				if (!m->fieldset_s(dm, table, field_s, v)) {
+					const char *ty = dm_value_type_str(table);
+					return runtime_error(dm, chunk, "Can't set field '%s' of <%s>", field_s, ty);
+				}
+				stack_push(stack, v);
+				break;
+			}
+			case DM_OP_FIELDGETOPSET_S:       {
+				int opassign = read8(chunk);
+				dm_value old;
+				dm_value v = stack_pop(stack);
+				dm_value field = stack_pop(stack);
+				dm_value table = stack_pop(stack);
+				dm_module *m = dm_state_get_module(dm, table.type);
+				const char *field_s = dm_string_c_str(field.str_val);
+				if (!m->fieldget_s(dm, table, field_s, &old)) {
+					const char *ty = dm_value_type_str(table);
+					return runtime_error(dm, chunk, "Can't get field '%s' of <%s>", field_s, ty);
+				}
+				v = do_opassign(dm, chunk, opassign, old, v);
 				if (!m->fieldset_s(dm, table, field_s, v)) {
 					const char *ty = dm_value_type_str(table);
 					return runtime_error(dm, chunk, "Can't set field '%s' of <%s>", field_s, ty);
