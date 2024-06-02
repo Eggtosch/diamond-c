@@ -174,8 +174,9 @@ static dm_token lnumber(dm_lexer *lexer) {
 
 static dm_tokentype lidentifier_type(dm_lexer *lexer) {
 	struct reserved_word *word = &reserved_words[0];
+	unsigned int len = lexer->current - lexer->start;
 	for (; word->name != NULL; word++) {
-		if (strncmp(word->name, lexer->start, strlen(word->name)) == 0) {
+		if (len == strlen(word->name) && strncmp(word->name, lexer->start, len) == 0) {
 			return word->type;
 		}
 	}
