@@ -224,7 +224,7 @@ dm_value dm_chunk_get_var(dm_chunk *chunk, int index) {
 
 
 static int decompile_op(uint8_t *code) {
-	uint8_t opcode = code[0];
+	dm_opcode opcode = code[0];
 	switch (opcode) {
 		case DM_OP_IMPORT:				printf("IMPORT\n"); return 1;
 		case DM_OP_VARSET:				printf("VARSET %d\n", code[1] << 8 | code[2]); return 3;
@@ -272,8 +272,10 @@ static int decompile_op(uint8_t *code) {
 
 		case DM_OP_POP:					printf("POP\n"); return 1;
 		case DM_OP_RETURN:				printf("RETURN\n"); return 1;
-		default: 						printf("UNKNOWN_OPCODE\n"); return 1;
 	}
+
+	printf("UNKNOWN_OPCODE\n");
+	return 1;
 }
 
 void dm_chunk_decompile(dm_chunk *chunk) {

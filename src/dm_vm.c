@@ -138,7 +138,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 	}
 
 	for (;;) {
-		uint8_t opcode = read8(chunk);
+		dm_opcode opcode = (dm_opcode) read8(chunk);
 
 		switch (opcode) {
 			case DM_OP_IMPORT:              {
@@ -539,7 +539,6 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				return stack_pop(stack);
 				break;
 			}
-			default: return dm_value_nil();
 		}
 	}
 	return dm_value_nil();
