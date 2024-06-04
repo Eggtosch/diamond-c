@@ -60,6 +60,9 @@ int main(int argc, char **argv) {
 		if (strcmp(argv[i], "--help") == 0) {
 			usage(argv);
 			return 0;
+		} else if (strcmp(argv[i], "--argument-list") == 0) {
+			printf("--help --lsp --debug\n");
+			return 0;
 		} else if (strcmp(argv[i], "--lsp") == 0) {
 			dm_lsp_run(dm);
 			return 0;

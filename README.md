@@ -11,3 +11,8 @@ add the syntax rules to diamond files.
 Copy the `docs/diamond.lua` file to `~/.config/nvim/after/ftplugin/diamond.lua`, so neovim will
 start the diamond lsp server when a diamond file is opened.
 One may has to adjust the command path the server is at.
+
+## bash completions
+
+Copy the `docs/diamond` file to `~/.local/share/bash-completion/completions/`, so bash will auto
+complete the diamond command.

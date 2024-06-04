@@ -1,0 +1,13 @@
+#!/usr/bin/bash
+
+_diamond () {
+	cur="${COMP_WORDS[COMP_CWORD]}"
+	if [[ $cur == -* ]]; then
+		COMMANDS=$(diamond --argument-list)
+		COMPREPLY=($(compgen -W "$COMMANDS" -- "$2"))
+	else
+		_filedir
+	fi
+}
+
+complete -F _diamond diamond
