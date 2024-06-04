@@ -32,7 +32,7 @@ typedef enum {
 	DM_TOKEN_OR, DM_TOKEN_RETURN, DM_TOKEN_SELF, DM_TOKEN_THEN, DM_TOKEN_TRUE,
 	DM_TOKEN_WHILE,
 
-	DM_TOKEN_IMPORT, DM_TOKEN_GLOBAL,
+	DM_TOKEN_IMPORT, DM_TOKEN_GLOBAL, DM_TOKEN_COMMENT,
 
 	DM_TOKEN_ERROR, DM_TOKEN_EOF
 } dm_tokentype;
@@ -142,12 +142,18 @@ static void lskip_whitespace(dm_lexer *lexer) {
 		} else if (c == '\n') {
 			lexer->line++;
 			lnext(lexer);
-		} else if (c == '#') {
-			while (lpeek(lexer) != '\n' && !lis_eof(lexer)) lnext(lexer);
 		} else {
 			return;
 		}
 	}
+}
+
+static dm_token lread_comment(dm_lexer *lexer) {
+	while (lpeek(lexer) != '\n' && !lis_eof(lexer)) {
+		lnext(lexer);
+	}
+
+	return ltoken_new(lexer, DM_TOKEN_COMMENT);
 }
 
 static dm_token lread_string(dm_lexer *lexer) {
@@ -224,6 +230,7 @@ dm_token lex(dm_lexer *lexer) {
 		case '<': return ltoken_new(lexer, lmatch(lexer, '=') ? DM_TOKEN_LESS_EQUAL    : DM_TOKEN_LESS);
 		case '>': return ltoken_new(lexer, lmatch(lexer, '=') ? DM_TOKEN_GREATER_EQUAL : DM_TOKEN_GREATER);
 		case '"': return lread_string(lexer);
+		case '#': return lread_comment(lexer);
 	}
 
 	return ltoken_error(lexer, "Unexpected character.");
@@ -295,6 +302,9 @@ static void pnext(dm_parser *parser) {
 		parser->current = lex(parser->lexer);
 		if (parser->current.type != DM_TOKEN_EOF) {
 			dm_chunk_set_line(parser->chunk, parser->current.line);
+		}
+		if (parser->current.type == DM_TOKEN_COMMENT) {
+			continue;
 		}
 		if (parser->current.type != DM_TOKEN_ERROR) {
 			break;
@@ -905,6 +915,7 @@ dm_parserule rules[] = {
 	[DM_TOKEN_SELF]          = {pself,     NULL,     DM_PREC_NONE},
 	[DM_TOKEN_IMPORT]        = {pimport,   NULL,     DM_PREC_NONE},
 	[DM_TOKEN_GLOBAL]        = {pglobal,   NULL,     DM_PREC_NONE},
+	[DM_TOKEN_COMMENT]       = {NULL,      NULL,     DM_PREC_NONE},
 
 	[DM_TOKEN_ERROR]         = {NULL,      NULL,     DM_PREC_NONE},
 	[DM_TOKEN_EOF]           = {NULL,      NULL,     DM_PREC_NONE}
