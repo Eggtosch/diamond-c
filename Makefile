@@ -25,6 +25,9 @@ $(BINARY): $(OBJDIR) $(OBJS)
 $(OBJDIR)/%.o: %.c
 	$(CC) $(FLAGS) -c $< -o $@
 
+install: $(BINARY)
+	cp $(BINARY) ~/.local/bin/
+
 .PHONY: tests
 tests: $(BINARY)
 	tests/run_tests.sh
