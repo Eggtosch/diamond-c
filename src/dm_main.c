@@ -20,12 +20,17 @@ static void usage(char **argv) {
 }
 
 static void run(dm_state *dm, char *prog, bool repl) {
-	dm_value ret = dm_vm_exec(dm, prog, repl);
+	dm_value result;
+	int success = dm_vm_exec(dm, prog, &result, repl);
+	if (success != 0) {
+		return;
+	}
+
 	if (dm_debug_enabled(dm)) {
 		printf("Result: ");
 	}
 
-	dm_value_inspect(ret);
+	dm_value_inspect(dm, result);
 	printf("\n");
 }
 
@@ -54,6 +59,10 @@ static void run_file(dm_state *dm, const char *path) {
 
 int main(int argc, char **argv) {
 	dm_state *dm = dm_open();
+	if (dm == NULL) {
+		return 1;
+	}
+
 	const char *script = NULL;
 
 	for (int i = 1; i < argc; i++) {

@@ -12,15 +12,43 @@ struct dm_state {
 	bool runtime_error;
 };
 
-static void init_modules(dm_state *dm) {
+static int required_field_null(dm_module *m, const char *field) {
+	printf("[dm] Required field '%s' of module '%s' is not set\n", field, m->typename);
+	return 1;
+}
+
+static int init_modules(dm_state *dm) {
 	dm->modules[DM_TYPE_NIL] = dm_nil_init(dm);
 	dm->modules[DM_TYPE_BOOL] = dm_bool_init(dm);
 	dm->modules[DM_TYPE_INT] = dm_int_init(dm);
 	dm->modules[DM_TYPE_FLOAT] = dm_float_init(dm);
 	dm->modules[DM_TYPE_STRING] = dm_string_init(dm);
 	dm->modules[DM_TYPE_ARRAY] = dm_array_init(dm);
-	dm->modules[DM_TYPE_TABLE] = (dm_module){0};
-	dm->modules[DM_TYPE_FUNCTION] = (dm_module){0};
+	dm->modules[DM_TYPE_TABLE] = dm_table_init(dm);
+	dm->modules[DM_TYPE_FUNCTION] = dm_function_init(dm);
+
+	int error = 0;
+	for (int i = 0; i < DM_TYPE_NUM_TYPES; i++) {
+		if (dm->modules[i].typename == NULL) {
+			printf("Module at index %d has no name\n", i);
+			error = 1;
+			continue;
+		}
+		if (dm->modules[i].inspect == NULL) {
+			error = required_field_null(&dm->modules[i], "inspect");
+		}
+		if (dm->modules[i].equals == NULL) {
+			error = required_field_null(&dm->modules[i], "equals");
+		}
+		if (dm->modules[i].fieldget_s == NULL) {
+			error = required_field_null(&dm->modules[i], "fieldget_s");
+		}
+		if (dm->modules[i].fieldset_s == NULL) {
+			error = required_field_null(&dm->modules[i], "fieldset_s");
+		}
+	}
+
+	return error;
 }
 
 char *dm_read_file(const char *path) {
@@ -51,7 +79,11 @@ char *dm_read_file(const char *path) {
 dm_state *dm_open(void) {
 	dm_state *dm = malloc(sizeof(dm_state));
 	dm_gc_init(dm);
-	init_modules(dm);
+	if (init_modules(dm) != 0) {
+		free(dm);
+		return NULL;
+	}
+
 	dm->main = dm_value_nil();
 	dm->debug = false;
 	dm->runtime_error = false;

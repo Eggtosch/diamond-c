@@ -6,6 +6,7 @@
 #include <dm_compiler.h>
 #include <dm_chunk.h>
 #include <dm_state.h>
+#include <dm_function.h>
 
 //#############################################################
 
@@ -108,7 +109,10 @@ static char lpeek(dm_lexer *lexer) {
 }
 
 static char lpeek_next(dm_lexer *lexer) {
-	if (lis_eof(lexer)) return '\0';
+	if (lis_eof(lexer)) {
+		return '\0';
+	}
+
 	return lexer->current[1];
 }
 
@@ -118,8 +122,10 @@ static char lnext(dm_lexer *lexer) {
 }
 
 static bool lmatch(dm_lexer *lexer, char expected) {
-	if (lis_eof(lexer)) return false;
-	if (*lexer->current != expected) return false;
+	if (lis_eof(lexer) || *lexer->current != expected) {
+		return false;
+	}
+
 	lexer->current++;
 	return true;
 }
@@ -158,23 +164,32 @@ static dm_token lread_comment(dm_lexer *lexer) {
 
 static dm_token lread_string(dm_lexer *lexer) {
 	while (lpeek(lexer) != '"' && !lis_eof(lexer)) {
-		if (lpeek(lexer) == '\n') lexer->line++;
+		if (lpeek(lexer) == '\n') {
+			lexer->line++;
+		}
+
 		lnext(lexer);
 	}
 
-	if (lis_eof(lexer))
+	if (lis_eof(lexer)) {
 		return ltoken_error(lexer, "found unterminated string");
+	}
 
 	lnext(lexer);
 	return ltoken_new(lexer, DM_TOKEN_STRING);
 }
 
 static dm_token lnumber(dm_lexer *lexer) {
-	while (lis_digit(lpeek(lexer))) lnext(lexer);
+	while (lis_digit(lpeek(lexer))) {
+		lnext(lexer);
+	}
 
 	if (lpeek(lexer) == '.' && lis_digit(lpeek_next(lexer))) {
 		lnext(lexer);
-		while (lis_digit(lpeek(lexer))) lnext(lexer);
+		while (lis_digit(lpeek(lexer))) {
+			lnext(lexer);
+		}
+
 		return ltoken_new(lexer, DM_TOKEN_FLOAT);
 	}
 
@@ -193,7 +208,10 @@ static dm_tokentype lidentifier_type(dm_lexer *lexer) {
 }
 
 static dm_token lidentifier(dm_lexer *lexer) {
-	while (lis_alpha(lpeek(lexer)) || lis_digit(lpeek(lexer))) lnext(lexer);
+	while (lis_alpha(lpeek(lexer)) || lis_digit(lpeek(lexer))) {
+		lnext(lexer);
+	}
+
 	return ltoken_new(lexer, lidentifier_type(lexer));
 }
 
@@ -201,13 +219,19 @@ dm_token lex(dm_lexer *lexer) {
 	lskip_whitespace(lexer);
 	lexer->start = lexer->current;
 
-	if (lis_eof(lexer))
+	if (lis_eof(lexer)) {
 		return ltoken_new(lexer, DM_TOKEN_EOF);
+	}
 
 	char c = lnext(lexer);
 
-	if (lis_digit(c)) return lnumber(lexer);
-	if (lis_alpha(c)) return lidentifier(lexer);
+	if (lis_digit(c)) {
+		return lnumber(lexer);
+	}
+
+	if (lis_alpha(c)) {
+		return lidentifier(lexer);
+	}
 
 	switch(c) {
 		case '(': return ltoken_new(lexer, DM_TOKEN_LEFT_PAREN);
@@ -231,9 +255,8 @@ dm_token lex(dm_lexer *lexer) {
 		case '>': return ltoken_new(lexer, lmatch(lexer, '=') ? DM_TOKEN_GREATER_EQUAL : DM_TOKEN_GREATER);
 		case '"': return lread_string(lexer);
 		case '#': return lread_comment(lexer);
+		default:  return ltoken_error(lexer, "Unexpected character.");
 	}
-
-	return ltoken_error(lexer, "Unexpected character.");
 }
 
 //#############################################################
@@ -278,7 +301,10 @@ static dm_parserule *pget_rule(dm_tokentype type) {
 }
 
 static void perr_at(dm_parser *parser, dm_token *token, const char *message) {
-	if (parser->panic_mode) return;
+	if (parser->panic_mode) {
+		return;
+	}
+
 	parser->panic_mode = true;
 	fprintf(stderr, "[line %d] Error", token->line);
 
@@ -474,7 +500,7 @@ static void ptablelit(dm_parser *parser) {
 static void pstring(dm_parser *parser) {
 	const char *s = parser->previous.begin + 1;
 	int len = parser->previous.len - 2;
-	dm_chunk_emit_constant(parser->chunk, dm_value_string_len(parser->dm, s, len));
+	dm_chunk_emit_constant(parser->dm, parser->chunk, dm_value_string_len(parser->dm, s, len));
 }
 
 static void pinteger(dm_parser *parser) {
@@ -482,13 +508,13 @@ static void pinteger(dm_parser *parser) {
 	if (value <= UINT16_MAX) {
 		dm_chunk_emit_arg16(parser->chunk, DM_OP_CONSTANT_SMALLINT, value);
 	} else {
-		dm_chunk_emit_constant(parser->chunk, dm_value_int(value));
+		dm_chunk_emit_constant(parser->dm, parser->chunk, dm_value_int(value));
 	}
 }
 
 static void pfloating(dm_parser *parser) {
 	double value = strtod(parser->previous.begin, NULL);
-	dm_chunk_emit_constant(parser->chunk, dm_value_float(value));
+	dm_chunk_emit_constant(parser->dm, parser->chunk, dm_value_float(value));
 }
 
 static void pboolean(dm_parser *parser) {
@@ -547,7 +573,7 @@ static void pdot(dm_parser *parser) {
 	int len = parser->previous.len;
 	int index = dm_chunk_index_of_string_constant(parser->chunk, var, len);
 	if (index == -1) {
-		dm_chunk_emit_constant(parser->chunk, dm_value_string_len(parser->dm, var, len));
+		dm_chunk_emit_constant(parser->dm, parser->chunk, dm_value_string_len(parser->dm, var, len));
 	} else {
 		dm_chunk_emit_constant_i(parser->chunk, index);
 	}
@@ -772,7 +798,7 @@ static int parglist(dm_parser *parser, bool *takes_self) {
 
 static dm_value pcompiler_end(dm_parser *parser, dm_value f, int nargs, bool takes_self) {
 	dm_chunk_emit(parser->chunk, DM_OP_RETURN);
-	if (dm_value_is(f, DM_TYPE_NIL)) {
+	if (f.type == DM_TYPE_NIL) {
 		f = dm_value_function(parser->dm, parser->chunk, nargs, takes_self);
 	} else {
 		f.func_val->chunk = parser->chunk;
@@ -810,7 +836,7 @@ static void pfunction(dm_parser *parser) {
 
 	dm_value func = pcompiler_end(parser, dm_value_nil(), nargs, takes_self);
 	parser->chunk = parent_chunk;
-	dm_chunk_emit_constant(parser->chunk, func);
+	dm_chunk_emit_constant(parser->dm, parser->chunk, func);
 	if (func_name != -1) {
 		dm_chunk_emit_arg16(parser->chunk, DM_OP_VARSET, func_name);
 	}
@@ -832,12 +858,13 @@ int dm_compile(dm_state *dm, dm_value *main, char *prog) {
 		return 1;
 	}
 
-	if (dm_value_is(*main, DM_TYPE_NIL)) {
+	if (main->type == DM_TYPE_NIL) {
 		parser.chunk = malloc(sizeof(dm_chunk));
 		dm_chunk_init(parser.chunk);
 	} else {
 		parser.chunk = (dm_chunk*) main->func_val->chunk;
 		dm_chunk_reset_code(parser.chunk);
+		lexer.line = parser.chunk->current_line;
 	}
 
 	pnext(&parser);
@@ -860,6 +887,7 @@ int dm_compile(dm_state *dm, dm_value *main, char *prog) {
 	}
 
 	*main = pcompiler_end(&parser, *main, 0, false);
+	dm_chunk_set_line(main->func_val->chunk, lexer.line + 1);
 	return 0;
 }
 

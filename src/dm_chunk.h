@@ -95,7 +95,7 @@ int dm_chunk_current_line(dm_chunk *chunk);
 void dm_chunk_set_line(dm_chunk *chunk, int line);
 
 int  dm_chunk_index_of_string_constant(dm_chunk *chunk, const char *s, size_t len);
-void dm_chunk_emit_constant(dm_chunk *chunk, dm_value value);
+void dm_chunk_emit_constant(dm_state *dm, dm_chunk *chunk, dm_value value);
 void dm_chunk_emit_constant_i(dm_chunk *chunk, int index);
 
 void dm_chunk_emit(dm_chunk *chunk, dm_opcode opcode);
@@ -111,4 +111,4 @@ int  dm_chunk_find_var(dm_chunk *chunk, const char *name, int size);
 void dm_chunk_set_var(dm_chunk *chunk, int index, dm_value v);
 dm_value dm_chunk_get_var(dm_chunk *chunk, int index);
 
-void dm_chunk_decompile(dm_chunk *chunk);
+void dm_chunk_decompile(dm_state *dm, dm_chunk *chunk);

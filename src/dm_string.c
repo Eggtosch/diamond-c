@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <dm_string.h>
+#include <dm.h>
 
 struct dm_string {
 	dm_gc_obj gc_header;
@@ -35,16 +36,31 @@ const char *dm_string_c_str(dm_string *s) {
 	return s->data;
 }
 
-bool dm_string_equal(dm_string *s1, dm_string *s2) {
+static bool dm_string_equals(dm_state *dm, dm_value self, dm_value other) {
+	(void) dm;
+
+	if (other.type != DM_TYPE_STRING) {
+		return false;
+	}
+
+	dm_string *s1 = self.str_val;
+	dm_string *s2 = other.str_val;
 	return s1->size == s2->size && memcmp(s1->data, s2->data, s1->size) == 0;
 }
 
-void dm_string_inspect(dm_string *s) {
+static void dm_string_inspect(dm_state *dm, dm_value self) {
+	(void) dm;
+	dm_string *s = self.str_val;
 	printf("\"%.*s\"", (int) s->size, s->data);
 }
 
 static int dm_string_compare(dm_state *dm, dm_value self, dm_value other) {
 	(void) dm;
+
+	if (other.type != DM_TYPE_STRING) {
+		return dm_runtime_compare_mismatch(dm, self, other);
+	}
+
 	const char *s1 = self.str_val->data;
 	const char *s2 = other.str_val->data;
 	int res = strcmp(s1, s2);
@@ -95,10 +111,13 @@ static dm_value dm_string_mul(dm_state *dm, dm_value self, dm_value other) {
 
 dm_module dm_string_init(dm_state *dm) {
 	(void) dm;
-	dm_module m = {0};
-	m.compare = dm_string_compare;
+	dm_module m = dm_module_default(dm);
+	m.typename = "string";
+	m.equals = dm_string_equals;
+	m.inspect = dm_string_inspect;
 	m.fieldset_s = dm_string_fieldset;
 	m.fieldget_s = dm_string_fieldget;
+	m.compare = dm_string_compare;
 	m.add = dm_string_add;
 	m.mul = dm_string_mul;
 	return m;

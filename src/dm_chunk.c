@@ -77,7 +77,7 @@ void dm_chunk_set_line(dm_chunk *chunk, int line) {
 int dm_chunk_index_of_string_constant(dm_chunk *chunk, const char *s, size_t len) {
 	for (int i = 0; i < chunk->constsize; i++) {
 		dm_value c = chunk->consts[i];
-		if (dm_value_is(c, DM_TYPE_STRING)) {
+		if (c.type == DM_TYPE_STRING) {
 			if (dm_string_size(c.str_val) == len && strncmp(dm_string_c_str(c.str_val), s, len) == 0) {
 				return i;
 			}
@@ -86,10 +86,10 @@ int dm_chunk_index_of_string_constant(dm_chunk *chunk, const char *s, size_t len
 	return -1;
 }
 
-void dm_chunk_emit_constant(dm_chunk *chunk, dm_value value) {
+void dm_chunk_emit_constant(dm_state *dm, dm_chunk *chunk, dm_value value) {
 	int index = 0;
 	for (; index < chunk->constsize; index++) {
-		if (dm_value_equal(chunk->consts[index], value)) {
+		if (dm_value_equals(dm, chunk->consts[index], value)) {
 			break;
 		}
 	}
@@ -294,7 +294,7 @@ static int decompile_op(uint8_t *code) {
 	return 1;
 }
 
-void dm_chunk_decompile(dm_chunk *chunk) {
+void dm_chunk_decompile(dm_state *dm, dm_chunk *chunk) {
 	for (int i = 0; i < chunk->codesize;) {
 		printf("%d: ", i);
 		i += decompile_op(chunk->code + i);
@@ -303,14 +303,14 @@ void dm_chunk_decompile(dm_chunk *chunk) {
 	printf("Constants:\n");
 	for (int i = 0; i < chunk->constsize; i++) {
 		printf("%d: ", i);
-		dm_value_inspect(chunk->consts[i]);
+		dm_value_inspect(dm, chunk->consts[i]);
 		printf("\n");
 	}
 
 	printf("Variables:\n");
 	for (int i = 0; i < chunk->varsize; i++) {
 		printf("%d: %s -> ", i, chunk->vars[i].name);
-		dm_value_inspect(chunk->vars[i].value);
+		dm_value_inspect(dm, chunk->vars[i].value);
 		printf("\n");
 	}
 }

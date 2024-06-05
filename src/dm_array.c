@@ -39,43 +39,30 @@ dm_value dm_value_array(dm_state *dm, int capacity) {
 	return (dm_value){DM_TYPE_ARRAY, {.arr_val = arr}};
 }
 
-bool dm_array_equal(dm_array *a1, dm_array *a2) {
-	if (a1->size != a2->size) {
-		return false;
-	}
-	for (int i = 0; i < a1->size; i++) {
-		dm_value v1 = ((dm_value*) a1->values)[i];
-		dm_value v2 = ((dm_value*) a2->values)[i];
-		if (!dm_value_equal(v1, v2)) {
-			return false;
-		}
-	}
-	return true;
-}
+static void dm_array_inspect(dm_state *dm, dm_value self) {
+	dm_array *a = self.arr_val;
+	dm_value *values = a->values;
 
-void dm_array_inspect(dm_array *a) {
 	printf("[");
 	if (a->size == 0) {
 		printf("]");
 		return;
 	}
 	for (int i = 0; i < a->size - 1; i++) {
-		dm_value v = ((dm_value*) a->values)[i];
-		dm_value_inspect(v);
+		dm_value_inspect(dm, values[i]);
 		printf(", ");
 	}
-	dm_value v = ((dm_value*) a->values)[a->size - 1];
-	dm_value_inspect(v);
+	dm_value_inspect(dm, values[a->size - 1]);
 	printf("]");
 }
 
 void dm_value_array_set(dm_value a, dm_value index, dm_value v) {
-	if (!dm_value_is(a, DM_TYPE_ARRAY)) {
+	if (a.type != DM_TYPE_ARRAY) {
 		// error
 		return;
 	}
 
-	if (!dm_value_is(index, DM_TYPE_INT)) {
+	if (index.type != DM_TYPE_INT) {
 		// error
 		return;
 	}
@@ -92,12 +79,12 @@ void dm_value_array_set(dm_value a, dm_value index, dm_value v) {
 }
 
 dm_value dm_value_array_get(dm_value a, dm_value index) {
-	if (!dm_value_is(a, DM_TYPE_ARRAY)) {
+	if (a.type != DM_TYPE_ARRAY) {
 		// error
 		return dm_value_nil();
 	}
 
-	if (!dm_value_is(index, DM_TYPE_INT)) {
+	if (index.type != DM_TYPE_INT) {
 		// error
 		return dm_value_nil();
 	}
@@ -113,24 +100,26 @@ dm_value dm_value_array_get(dm_value a, dm_value index) {
 	return data[_index];
 }
 
-static int dm_array_compare(dm_state *dm, dm_value self, dm_value other) {
-	(void) dm;
-
-	dm_array *a = self.arr_val;
-	dm_array *b = other.arr_val;
-	if (a->size != b->size) {
-		return -1;
+static bool dm_array_equals(dm_state *dm, dm_value self, dm_value other) {
+	if (self.type != other.type) {
+		return false;
 	}
 
-	dm_value *a_v = (dm_value*) a->values;
-	dm_value *b_v = (dm_value*) b->values;
-	for (int i = 0; i < a->size; i++) {
-		if (!dm_value_equal(a_v[i], b_v[i])) {
-			return -1;
+	dm_array *a1 = self.arr_val;
+	dm_array *a2 = other.arr_val;
+	if (a1->size != a2->size) {
+		return false;
+	}
+
+	for (int i = 0; i < a1->size; i++) {
+		dm_value v1 = ((dm_value*) a1->values)[i];
+		dm_value v2 = ((dm_value*) a2->values)[i];
+		if (!dm_value_equals(dm, v1, v2)) {
+			return false;
 		}
 	}
 
-	return 0;
+	return true;
 }
 
 static bool dm_array_fieldset(dm_state *dm, dm_value self, const char *field, dm_value v) {
@@ -178,7 +167,7 @@ static dm_value dm_array_sub(dm_state *dm, dm_value self, dm_value other) {
 	int items_to_delete = 0;
 	for (int i = 0; i < a->size; i++) {
 		for (int j = 0; j < b->size; j++) {
-			if (dm_value_equal(a_v[i], b_v[j])) {
+			if (dm_value_equals(dm, a_v[i], b_v[j])) {
 				items_to_delete++;
 				break;
 			}
@@ -190,7 +179,7 @@ static dm_value dm_array_sub(dm_state *dm, dm_value self, dm_value other) {
 	for (int i = 0; i < a->size; i++) {
 		bool should_delete = false;
 		for (int j = 0; j < b->size; j++) {
-			if (dm_value_equal(a_v[i], b_v[j])) {
+			if (dm_value_equals(dm, a_v[i], b_v[j])) {
 				should_delete = true;
 				break;
 			}
@@ -225,8 +214,10 @@ static dm_value dm_array_mul(dm_state *dm, dm_value self, dm_value other) {
 
 dm_module dm_array_init(dm_state *dm) {
 	(void) dm;
-	dm_module m = {0};
-	m.compare = dm_array_compare;
+	dm_module m = dm_module_default(dm);
+	m.typename = "array";
+	m.inspect = dm_array_inspect;
+	m.equals = dm_array_equals;
 	m.fieldset_s = dm_array_fieldset;
 	m.fieldget_s = dm_array_fieldget;
 	m.add = dm_array_add;
