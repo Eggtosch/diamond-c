@@ -1,5 +1,3 @@
-#define __STDC_WANT_LIB_EXT2__ 1
-#define _GNU_SOURCE
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -9,9 +7,6 @@
 #include <dm_compiler.h>
 #include <dm_chunk.h>
 #include <dm.h>
-
-typedef dm_value (dm_value_binary_fn)(dm_state*, dm_value, dm_value);
-typedef int (dm_value_cmp_fn)(dm_state*, dm_value, dm_value);
 
 typedef struct {
 	int size;
