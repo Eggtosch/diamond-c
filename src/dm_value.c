@@ -40,32 +40,32 @@ const char *dm_value_type_str(dm_state *dm, dm_value v) {
 }
 
 static int compare_fallback(dm_state *dm, dm_value self, dm_value other) {
-	return dm_runtime_compare_mismatch(dm, self, other);
+	dm_runtime_compare_mismatch(dm, self, other);
 }
 
 static dm_value add_fallback(dm_state *dm, dm_value self, dm_value other) {
 	(void) other;
-	return dm_runtime_no_method_error(dm, "+", self);
+	dm_runtime_no_method_error(dm, "+", self);
 }
 
 static dm_value sub_fallback(dm_state *dm, dm_value self, dm_value other) {
 	(void) other;
-	return dm_runtime_no_method_error(dm, "-", self);
+	dm_runtime_no_method_error(dm, "-", self);
 }
 
 static dm_value mul_fallback(dm_state *dm, dm_value self, dm_value other) {
 	(void) other;
-	return dm_runtime_no_method_error(dm, "*", self);
+	dm_runtime_no_method_error(dm, "*", self);
 }
 
 static dm_value div_fallback(dm_state *dm, dm_value self, dm_value other) {
 	(void) other;
-	return dm_runtime_no_method_error(dm, "/", self);
+	dm_runtime_no_method_error(dm, "/", self);
 }
 
 static dm_value mod_fallback(dm_state *dm, dm_value self, dm_value other) {
 	(void) other;
-	return dm_runtime_no_method_error(dm, "%", self);
+	dm_runtime_no_method_error(dm, "%", self);
 }
 
 dm_module dm_module_default(dm_state *dm) {

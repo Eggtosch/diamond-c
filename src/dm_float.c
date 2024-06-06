@@ -35,10 +35,8 @@ dm_value dm_float_negate(dm_state *dm, dm_value self) {
 }
 
 static int dm_float_compare(dm_state *dm, dm_value self, dm_value other) {
-	(void) dm;
-
 	if (other.type != DM_TYPE_INT && other.type != DM_TYPE_FLOAT) {
-		return dm_runtime_compare_mismatch(dm, self, other);
+		dm_runtime_compare_mismatch(dm, self, other);
 	}
 
 	dm_float a = self.float_val;
@@ -53,37 +51,41 @@ static dm_value dm_float_add(dm_state *dm, dm_value self, dm_value other) {
 	} else if (other.type == DM_TYPE_INT) {
 		return dm_value_float(self.float_val + (dm_float) other.int_val);
 	}
-	return dm_value_nil();
+
+	dm_runtime_type_mismatch2(dm, DM_TYPE_INT, DM_TYPE_FLOAT, other);
 }
 
 static dm_value dm_float_sub(dm_state *dm, dm_value self, dm_value other) {
-	(void) dm;
 	if (other.type == DM_TYPE_FLOAT) {
 		return dm_value_float(self.float_val - other.float_val);
 	} else if (other.type == DM_TYPE_INT) {
 		return dm_value_float(self.float_val - (dm_float) other.int_val);
 	}
-	return dm_value_nil();
+
+	dm_runtime_type_mismatch2(dm, DM_TYPE_INT, DM_TYPE_FLOAT, other);
 }
 
 static dm_value dm_float_mul(dm_state *dm, dm_value self, dm_value other) {
-	(void) dm;
 	if (other.type == DM_TYPE_FLOAT) {
 		return dm_value_float(self.float_val * other.float_val);
 	} else if (other.type == DM_TYPE_INT) {
 		return dm_value_float(self.float_val * (dm_float) other.int_val);
 	}
-	return dm_value_nil();
+
+	dm_runtime_type_mismatch2(dm, DM_TYPE_INT, DM_TYPE_FLOAT, other);
 }
 
 static dm_value dm_float_div(dm_state *dm, dm_value self, dm_value other) {
-	(void) dm;
-	if (other.type == DM_TYPE_FLOAT) {
-		return dm_value_float(self.float_val / other.float_val);
-	} else if (other.type == DM_TYPE_INT) {
-		return dm_value_float(self.float_val / (dm_float) other.int_val);
+	if (other.type != DM_TYPE_INT && other.type != DM_TYPE_FLOAT) {
+		dm_runtime_type_mismatch2(dm, DM_TYPE_INT, DM_TYPE_FLOAT, other);
 	}
-	return dm_value_nil();
+
+	dm_float f = other.type == DM_TYPE_FLOAT ? other.float_val : (dm_float) other.int_val;
+	if (f == 0.0) {
+		dm_runtime_error(dm, "division by 0");
+	}
+
+	return dm_value_float(self.float_val / f);
 }
 
 dm_module dm_float_init(dm_state *dm) {

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <dm_array.h>
+#include <dm.h>
 
 struct dm_array {
 	dm_gc_obj gc_header;
@@ -56,21 +57,16 @@ static void dm_array_inspect(dm_state *dm, dm_value self) {
 	printf("]");
 }
 
-void dm_value_array_set(dm_value a, dm_value index, dm_value v) {
-	if (a.type != DM_TYPE_ARRAY) {
-		// error
-		return;
-	}
-
+void dm_value_array_set(dm_state *dm, dm_value a, dm_value index, dm_value v) {
 	if (index.type != DM_TYPE_INT) {
-		// error
+		dm_runtime_type_mismatch(dm, DM_TYPE_INT, index);
 		return;
 	}
 
 	int _index = index.int_val;
 	dm_array *arr = a.arr_val;
 	if (_index < 0 || _index >= arr->size) {
-		// error
+		dm_runtime_error(dm, "index %d out of bounds for array of length %d", _index, arr->size);
 		return;
 	}
 
@@ -78,22 +74,15 @@ void dm_value_array_set(dm_value a, dm_value index, dm_value v) {
 	data[_index] = v;
 }
 
-dm_value dm_value_array_get(dm_value a, dm_value index) {
-	if (a.type != DM_TYPE_ARRAY) {
-		// error
-		return dm_value_nil();
-	}
-
+dm_value dm_value_array_get(dm_state *dm, dm_value a, dm_value index) {
 	if (index.type != DM_TYPE_INT) {
-		// error
-		return dm_value_nil();
+		dm_runtime_type_mismatch(dm, DM_TYPE_INT, index);
 	}
 
 	int _index = index.int_val;
 	dm_array *arr = a.arr_val;
 	if (_index < 0 || _index >= arr->size) {
-		// error
-		return dm_value_nil();
+		dm_runtime_error(dm, "index %d out of bounds for array of length %d", _index, arr->size);
 	}
 
 	dm_value *data = (dm_value*) arr->values;
@@ -134,7 +123,7 @@ static bool dm_array_fieldget(dm_state *dm, dm_value self, const char *field, dm
 
 static dm_value dm_array_add(dm_state *dm, dm_value self, dm_value other) {
 	if (other.type != DM_TYPE_ARRAY) {
-		return dm_value_nil();
+		dm_runtime_type_mismatch(dm, DM_TYPE_ARRAY, other);
 	}
 
 	dm_array *a = self.arr_val;
@@ -144,20 +133,19 @@ static dm_value dm_array_add(dm_state *dm, dm_value self, dm_value other) {
 	dm_value arr = dm_value_array(dm, a->size + b->size);
 	int i = 0;
 	for (int n = 0; n < a->size; n++, i++) {
-		dm_value_array_set(arr, dm_value_int(i), a_v[n]);
+		dm_value_array_set(dm, arr, dm_value_int(i), a_v[n]);
 	}
 
 	for (int n = 0; n < b->size; n++, i++) {
-		dm_value_array_set(arr, dm_value_int(i), b_v[n]);
+		dm_value_array_set(dm, arr, dm_value_int(i), b_v[n]);
 	}
 
 	return arr;
 }
 
 static dm_value dm_array_sub(dm_state *dm, dm_value self, dm_value other) {
-	(void) dm;
 	if (other.type != DM_TYPE_ARRAY) {
-		return dm_value_nil();
+		dm_runtime_type_mismatch(dm, DM_TYPE_ARRAY, other);
 	}
 
 	dm_array *a = self.arr_val;
@@ -186,7 +174,7 @@ static dm_value dm_array_sub(dm_state *dm, dm_value self, dm_value other) {
 		}
 
 		if (!should_delete) {
-			dm_value_array_set(new, dm_value_int(new_i), a_v[i]);
+			dm_value_array_set(dm, new, dm_value_int(new_i), a_v[i]);
 			new_i++;
 		}
 	}
@@ -196,7 +184,7 @@ static dm_value dm_array_sub(dm_state *dm, dm_value self, dm_value other) {
 
 static dm_value dm_array_mul(dm_state *dm, dm_value self, dm_value other) {
 	if (other.type != DM_TYPE_INT) {
-		return dm_value_nil();
+		dm_runtime_type_mismatch(dm, DM_TYPE_INT, other);
 	}
 
 	dm_array *a = self.arr_val;
@@ -205,7 +193,7 @@ static dm_value dm_array_mul(dm_state *dm, dm_value self, dm_value other) {
 	int new_i = 0;
 	for (int i = 0; i < (int) other.int_val; i++) {
 		for (int n = 0; n < a->size; n++, new_i++) {
-			dm_value_array_set(new, dm_value_int(new_i), a_v[n]);
+			dm_value_array_set(dm, new, dm_value_int(new_i), a_v[n]);
 		}
 	}
 

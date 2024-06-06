@@ -58,7 +58,7 @@ static int dm_string_compare(dm_state *dm, dm_value self, dm_value other) {
 	(void) dm;
 
 	if (other.type != DM_TYPE_STRING) {
-		return dm_runtime_compare_mismatch(dm, self, other);
+		dm_runtime_compare_mismatch(dm, self, other);
 	}
 
 	const char *s1 = self.str_val->data;

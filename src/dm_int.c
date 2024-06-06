@@ -43,55 +43,69 @@ static int dm_int_compare(dm_state *dm, dm_value self, dm_value other) {
 		return a < b ? -1 : a == b ? 0 : 1;
 	}
 
-	return dm_runtime_compare_mismatch(dm, self, other);
+	dm_runtime_compare_mismatch(dm, self, other);
 }
 
 static dm_value dm_int_add(dm_state *dm, dm_value self, dm_value other) {
-	(void) dm;
 	if (other.type == DM_TYPE_INT) {
 		return dm_value_int(self.int_val + other.int_val);
 	} else if (other.type == DM_TYPE_FLOAT) {
 		return dm_value_float((dm_float) self.int_val + other.float_val);
 	}
-	return dm_value_nil();
+
+	dm_runtime_type_mismatch2(dm, DM_TYPE_INT, DM_TYPE_FLOAT, other);
 }
 
 static dm_value dm_int_sub(dm_state *dm, dm_value self, dm_value other) {
-	(void) dm;
 	if (other.type == DM_TYPE_INT) {
 		return dm_value_int(self.int_val - other.int_val);
 	} else if (other.type == DM_TYPE_FLOAT) {
 		return dm_value_float((dm_float) self.int_val - other.float_val);
 	}
-	return dm_value_nil();
+
+	dm_runtime_type_mismatch2(dm, DM_TYPE_INT, DM_TYPE_FLOAT, other);
 }
 
 static dm_value dm_int_mul(dm_state *dm, dm_value self, dm_value other) {
-	(void) dm;
 	if (other.type == DM_TYPE_INT) {
 		return dm_value_int(self.int_val * other.int_val);
 	} else if (other.type == DM_TYPE_FLOAT) {
 		return dm_value_float((dm_float) self.int_val * other.float_val);
 	}
-	return dm_value_nil();
+
+	dm_runtime_type_mismatch2(dm, DM_TYPE_INT, DM_TYPE_FLOAT, other);
 }
 
 static dm_value dm_int_div(dm_state *dm, dm_value self, dm_value other) {
-	(void) dm;
+	if (other.type != DM_TYPE_INT && other.type != DM_TYPE_FLOAT) {
+		dm_runtime_type_mismatch2(dm, DM_TYPE_INT, DM_TYPE_FLOAT, other);
+	}
+
 	if (other.type == DM_TYPE_INT) {
+		if (other.int_val == 0) {
+			dm_runtime_error(dm, "division by 0");
+		}
+
 		return dm_value_int(self.int_val / other.int_val);
-	} else if (other.type == DM_TYPE_FLOAT) {
+	} else {
+		if (other.float_val == 0) {
+			dm_runtime_error(dm, "division by 0");
+		}
+
 		return dm_value_float((dm_float) self.int_val / other.float_val);
 	}
-	return dm_value_nil();
 }
 
 static dm_value dm_int_mod(dm_state *dm, dm_value self, dm_value other) {
-	(void) dm;
-	if (other.type == DM_TYPE_INT) {
-		return dm_value_int(self.int_val % other.int_val);
+	if (other.type != DM_TYPE_INT) {
+		dm_runtime_type_mismatch(dm, DM_TYPE_INT, other);
 	}
-	return dm_value_nil();
+
+	if (other.int_val == 0) {
+		dm_runtime_error(dm, "division by 0");
+	}
+
+	return dm_value_int(self.int_val % other.int_val);
 }
 
 dm_module dm_int_init(dm_state *dm) {

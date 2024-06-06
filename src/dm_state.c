@@ -3,11 +3,13 @@
 #include <dm_state.h>
 #include <dm.h>
 #include <dm_gc.h>
+#include <setjmp.h>
 
 struct dm_state {
 	dm_gc gc;
 	dm_module modules[DM_TYPE_NUM_TYPES];
 	dm_value main;
+	jmp_buf error_jump_buf;
 	bool debug;
 	bool runtime_error;
 };
@@ -110,11 +112,23 @@ dm_module *dm_state_get_module(dm_state *dm, dm_type t) {
 	return &dm->modules[t];
 }
 
-void dm_state_set_error(dm_state *dm, const char *message) {
-	if (message) {
-		printf("RuntimeError: %s\n", message);
-	}
-	dm->runtime_error = message != NULL;
+jmp_buf *dm_state_get_jmpbuf(dm_state *dm) {
+	return &dm->error_jump_buf;
+}
+
+dm_exception void dm_state_set_error(dm_state *dm, const char *message, va_list args) {
+	dm->runtime_error = true;
+
+	printf("RuntimeError: ");
+	vprintf(message, args);
+	printf("\n");
+	va_end(args);
+
+	longjmp(dm->error_jump_buf, 1);
+}
+
+void dm_state_reset_error(dm_state *dm) {
+	dm->runtime_error = false;
 }
 
 bool dm_state_has_error(dm_state *dm) {

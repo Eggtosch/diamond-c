@@ -42,23 +42,29 @@ static void stack_push(dm_stack *stack, dm_value val) {
 
 static dm_value stack_pop(dm_stack *stack) {
 	if (stack->size == 0) {
+		//dm_runtime_error(dm, "can't pop from empty stack");
 		return dm_value_nil();
 	}
+
 	stack->size--;
 	return stack->data[stack->size];
 }
 
 static dm_value stack_peek(dm_stack *stack) {
 	if (stack->size == 0) {
+		//dm_runtime_error(dm, "can't peek empty stack");
 		return dm_value_nil();
 	}
+
 	return stack->data[stack->size - 1];
 }
 
 static dm_value stack_peekn(dm_stack *stack, int n) {
 	if (stack->size <= n) {
+		//dm_runtime_error(dm, "can't peek %d items in stack of size %d", n, stack->size);
 		return dm_value_nil();
 	}
+
 	return stack->data[stack->size - 1 - n];
 }
 
@@ -77,31 +83,35 @@ static bool is_falsey(dm_value val) {
 	return val.type == DM_TYPE_NIL || (val.type == DM_TYPE_BOOL && val.bool_val == false);
 }
 
-dm_value dm_runtime_error(dm_state *dm, const char *message, ...) {
-	char *fmt;
+dm_exception void dm_runtime_error(dm_state *dm, const char *message, ...) {
 	va_list args;
-
 	va_start(args, message);
-	vasprintf(&fmt, message, args);
-
-	dm_state_set_error(dm, fmt);
-
-	free(fmt);
-	va_end(args);
-	return dm_value_nil();
+	dm_state_set_error(dm, message, args);
 }
 
-int dm_runtime_compare_mismatch(dm_state *dm, dm_value v1, dm_value v2) {
+dm_exception void dm_runtime_compare_mismatch(dm_state *dm, dm_value v1, dm_value v2) {
 	const char *msg = "Can't compare <%s> and <%s>";
 	const char *ty1 = dm_value_type_str(dm, v1);
 	const char *ty2 = dm_value_type_str(dm, v2);
 	dm_runtime_error(dm, msg, ty1, ty2);
-	return 0;
 }
 
-dm_value dm_runtime_no_method_error(dm_state *dm, const char *method, dm_value v) {
+dm_exception void dm_runtime_no_method_error(dm_state *dm, const char *method, dm_value v) {
 	const char *ty = dm_value_type_str(dm, v);
-	return dm_runtime_error(dm, "Unknown method '%s' for <%s>", method, ty);
+	dm_runtime_error(dm, "Unknown method '%s' for <%s>", method, ty);
+}
+
+dm_exception void dm_runtime_type_mismatch(dm_state *dm, dm_type expected, dm_value got) {
+	const char *ty_exp = dm_state_get_module(dm, expected)->typename;
+	const char *ty_got = dm_value_type_str(dm, got);
+	dm_runtime_error(dm, "Expected value of type <%s>, got <%s>", ty_exp, ty_got);
+}
+
+dm_exception void dm_runtime_type_mismatch2(dm_state *dm, dm_type expected1, dm_type expected2, dm_value got) {
+	const char *ty_exp1 = dm_state_get_module(dm, expected1)->typename;
+	const char *ty_exp2 = dm_state_get_module(dm, expected2)->typename;
+	const char *ty_got = dm_value_type_str(dm, got);
+	dm_runtime_error(dm, "Expected value of type <%s> or <%s>, got <%s>", ty_exp1, ty_exp2, ty_got);
 }
 
 static dm_value print_backtrace(dm_state *dm, dm_value f) {
@@ -143,7 +153,7 @@ static dm_value do_opassign(dm_state *dm, dm_opassign op, dm_value old, dm_value
 		case DM_OPASSIGN_MOD:   return m->mod(dm, old, v);
 	}
 
-	return dm_runtime_error(dm, "Can't execute op-assign %d", op);
+	dm_runtime_error(dm, "Can't execute op-assign %d", op);
 }
 
 static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
@@ -155,18 +165,18 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 		self = dm_chunk_get_var(chunk, 0);
 	}
 
-	for (;;) {
-		if (dm_state_has_error(dm)) {
-			return dm_value_nil();
-		}
+	if (setjmp(*dm_state_get_jmpbuf(dm)) != 0) {
+		return dm_value_nil();
+	}
 
+	for (;;) {
 		dm_opcode opcode = (dm_opcode) read8(chunk);
 
 		switch (opcode) {
 			case DM_OP_IMPORT:              {
 				dm_value module = stack_pop(stack);
 				if (module.type != DM_TYPE_STRING) {
-					return dm_runtime_error(dm, "Expected string for import");
+					dm_runtime_error(dm, "Expected string for import");
 				}
 
 				dm_value v = do_import(dm, module);
@@ -196,7 +206,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				for (int i = 0; i < ups; i++) {
 					upchunk = (dm_chunk*) upchunk->parent;
 					if (upchunk == NULL) {
-						return dm_runtime_error(dm, "Can't set upvalue from up chunk %d", ups);
+						dm_runtime_error(dm, "Can't set upvalue from up chunk %d", ups);
 					}
 				}
 				dm_value v = stack_peek(stack);
@@ -211,7 +221,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				for (int i = 0; i < ups; i++) {
 					upchunk = (dm_chunk*) upchunk->parent;
 					if (upchunk == NULL) {
-						return dm_runtime_error(dm, "Can't set upvalue from up chunk %d", ups);
+						dm_runtime_error(dm, "Can't set upvalue from up chunk %d", ups);
 					}
 				}
 				dm_value old = dm_chunk_get_var(upchunk, index);
@@ -234,7 +244,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				for (int i = 0; i < ups; i++) {
 					upchunk = (dm_chunk*) upchunk->parent;
 					if (upchunk == NULL) {
-						return dm_runtime_error(dm, "Can't get upvalue from up chunk %d", ups);
+						dm_runtime_error(dm, "Can't get upvalue from up chunk %d", ups);
 					}
 				}
 				dm_value v = dm_chunk_get_var(upchunk, index);
@@ -246,12 +256,11 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				dm_value field = stack_pop(stack);
 				dm_value table = stack_pop(stack);
 				if (table.type == DM_TYPE_ARRAY) {
-					dm_value_array_set(table, field, v);
+					dm_value_array_set(dm, table, field, v);
 				} else if (table.type == DM_TYPE_TABLE) {
 					dm_value_table_set(dm, table, field, v);
 				} else {
-					const char *msg = "Can't set field of <%s>, expected <array> or <table>";
-					return dm_runtime_error(dm, msg, dm_value_type_str(dm, field));
+					dm_runtime_type_mismatch2(dm, DM_TYPE_ARRAY, DM_TYPE_TABLE, field);
 				}
 				stack_push(stack, v);
 				break;
@@ -262,16 +271,15 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				dm_value field = stack_pop(stack);
 				dm_value table = stack_pop(stack);
 				if (table.type == DM_TYPE_ARRAY) {
-					dm_value old = dm_value_array_get(table, field);
+					dm_value old = dm_value_array_get(dm, table, field);
 					v = do_opassign(dm, opassign, old, v);
-					dm_value_array_set(table, field, v);
+					dm_value_array_set(dm, table, field, v);
 				} else if (table.type == DM_TYPE_TABLE) {
 					dm_value old = dm_value_table_get(dm, table, field);
 					v = do_opassign(dm, opassign, old, v);
 					dm_value_table_set(dm, table, field, v);
 				} else {
-					const char *msg = "Can't set field of <%s>, expected <array> or <table>";
-					return dm_runtime_error(dm, msg, dm_value_type_str(dm, field));
+					dm_runtime_type_mismatch2(dm, DM_TYPE_ARRAY, DM_TYPE_TABLE, field);
 				}
 				stack_push(stack, v);
 				break;
@@ -284,7 +292,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				const char *field_s = dm_string_c_str(field.str_val);
 				if (!m->fieldset_s(dm, table, field_s, v)) {
 					const char *ty = dm_value_type_str(dm, table);
-					return dm_runtime_error(dm, "Can't set field '%s' of <%s>", field_s, ty);
+					dm_runtime_error(dm, "Can't set field '%s' of <%s>", field_s, ty);
 				}
 				stack_push(stack, v);
 				break;
@@ -299,12 +307,12 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				const char *field_s = dm_string_c_str(field.str_val);
 				if (!m->fieldget_s(dm, table, field_s, &old)) {
 					const char *ty = dm_value_type_str(dm, table);
-					return dm_runtime_error(dm, "Can't get field '%s' of <%s>", field_s, ty);
+					dm_runtime_error(dm, "Can't get field '%s' of <%s>", field_s, ty);
 				}
 				v = do_opassign(dm, opassign, old, v);
 				if (!m->fieldset_s(dm, table, field_s, v)) {
 					const char *ty = dm_value_type_str(dm, table);
-					return dm_runtime_error(dm, "Can't set field '%s' of <%s>", field_s, ty);
+					dm_runtime_error(dm, "Can't set field '%s' of <%s>", field_s, ty);
 				}
 				stack_push(stack, v);
 				break;
@@ -314,12 +322,12 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				dm_value table = stack_pop(stack);
 				dm_value v;
 				if (table.type == DM_TYPE_ARRAY) {
-					v = dm_value_array_get(table, field);
+					v = dm_value_array_get(dm, table, field);
 				} else if (table.type == DM_TYPE_TABLE) {
 					v = dm_value_table_get(dm, table, field);
 				} else {
 					const char *msg = "Can't get field of <%s>, expected <array> or <table>";
-					return dm_runtime_error(dm, msg, dm_value_type_str(dm, table));
+					dm_runtime_error(dm, msg, dm_value_type_str(dm, table));
 				}
 				stack_push(stack, v);
 				break;
@@ -332,7 +340,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				const char *field_s = dm_string_c_str(field.str_val);
 				if (!m->fieldget_s(dm, table, field_s, &v)) {
 					const char *ty = dm_value_type_str(dm, table);
-					return dm_runtime_error(dm, "Can't get field '%s' of <%s>", field_s, ty);
+					dm_runtime_error(dm, "Can't get field '%s' of <%s>", field_s, ty);
 				}
 				stack_push(stack, v);
 				break;
@@ -342,12 +350,12 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				dm_value table = stack_peek(stack);
 				dm_value v;
 				if (table.type == DM_TYPE_ARRAY) {
-					v = dm_value_array_get(table, field);
+					v = dm_value_array_get(dm, table, field);
 				} else if (table.type == DM_TYPE_TABLE) {
 					v = dm_value_table_get(dm, table, field);
 				} else {
 					const char *msg = "Can't get field of <%s>, expected <array> or <table>";
-					return dm_runtime_error(dm, msg, dm_value_type_str(dm, table));
+					dm_runtime_error(dm, msg, dm_value_type_str(dm, table));
 				}
 				stack_push(stack, v);
 				break;
@@ -360,7 +368,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				const char *field_s = dm_string_c_str(field.str_val);
 				if (!m->fieldget_s(dm, table, field_s, &v)) {
 					const char *ty = dm_value_type_str(dm, table);
-					return dm_runtime_error(dm, "Can't get field '%s' of <%s>", field_s, ty);
+					dm_runtime_error(dm, "Can't get field '%s' of <%s>", field_s, ty);
 				}
 				stack_push(stack, v);
 				break;
@@ -379,7 +387,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				int elements = read16(chunk);
 				dm_value arr = dm_value_array(dm, elements);
 				while (elements--) {
-					dm_value_array_set(arr, dm_value_int(elements), stack_pop(stack));
+					dm_value_array_set(dm, arr, dm_value_int(elements), stack_pop(stack));
 				}
 				stack_push(stack, arr);
 				break;
@@ -416,7 +424,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				dm_value func = stack_peekn(stack, arguments);
 				if (arguments != func.func_val->nargs) {
 					int nargs = func.func_val->nargs;
-					return dm_runtime_error(dm, "expected %d args, but %d args given", nargs, arguments);
+					dm_runtime_error(dm, "expected %d args, but %d args given", nargs, arguments);
 				}
 
 				while (arguments--) {
@@ -438,7 +446,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				arguments += normal_args_start;
 				if (arguments != func.func_val->nargs) {
 					int nargs = func.func_val->nargs;
-					return dm_runtime_error(dm, "expected %d args, but %d args given", nargs, arguments);
+					dm_runtime_error(dm, "expected %d args, but %d args given", nargs, arguments);
 				}
 
 				while (arguments-- > normal_args_start) {
@@ -465,14 +473,14 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 				} else if (val.type == DM_TYPE_FLOAT) {
 					stack_push(stack, dm_float_negate(dm, val));
 				} else {
-					return dm_runtime_error(dm, "Can't negate <%s>", dm_value_type_str(dm, val));
+					dm_runtime_error(dm, "Can't negate <%s>", dm_value_type_str(dm, val));
 				}
 				break;
 			}
 			case DM_OP_NOT:                 {
 				dm_value val = stack_pop(stack);
 				if (val.type != DM_TYPE_BOOL) {
-					return dm_runtime_error(dm, "Can't apply logical not to <%s>", dm_value_type_str(dm, val));
+					dm_runtime_error(dm, "Can't apply logical not to <%s>", dm_value_type_str(dm, val));
 				}
 				stack_push(stack, dm_value_bool(!val.bool_val));
 				break;
@@ -599,7 +607,7 @@ static dm_value exec_func(dm_state *dm, dm_value f, dm_stack *stack) {
 }
 
 int dm_vm_exec(dm_state *dm, char *prog, dm_value *result, bool repl) {
-	dm_state_set_error(dm, NULL);
+	dm_state_reset_error(dm);
 	dm_value _nil = dm_value_nil();
 	dm_value *main = repl ? dm_state_get_main(dm) : &_nil;
 
@@ -613,10 +621,7 @@ int dm_vm_exec(dm_state *dm, char *prog, dm_value *result, bool repl) {
 	dm_value v = exec_func(dm, *main, &stack);
 	if (dm_state_has_error(dm)) {
 		print_backtrace(dm, *main);
-		return 1;
-	}
-
-	if (dm_debug_enabled(dm)) {
+	} else if (dm_debug_enabled(dm)) {
 		dm_chunk_decompile(dm, main->func_val->chunk);
 	}
 
@@ -625,5 +630,5 @@ int dm_vm_exec(dm_state *dm, char *prog, dm_value *result, bool repl) {
 		*result = v;
 	}
 
-	return 0;
+	return dm_state_has_error(dm);
 }
