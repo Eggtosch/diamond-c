@@ -32,9 +32,9 @@ char *dm_read_file(const char *path) {
 		exit(1);
 	}
 
-	fseek(file, 0L, SEEK_END);
+	fseek(file, 0, SEEK_END);
 	size_t file_size = ftell(file);
-	rewind(file);
+	fseek(file, 0, SEEK_SET);
 
 	char *buffer = malloc(file_size + 1);
 
