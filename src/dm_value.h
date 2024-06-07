@@ -61,7 +61,7 @@ dm_value dm_value_nil(void);
 dm_value dm_value_bool(dm_bool bool_val);
 dm_value dm_value_int(dm_int int_val);
 dm_value dm_value_float(dm_float float_val);
-dm_value dm_value_string_len(dm_state *dm, const char *s, int size);
+dm_value dm_value_string_const(dm_state *dm, const char *s, int size);
 dm_value dm_value_array(dm_state *dm, int capacity);
 dm_value dm_value_table(dm_state *dm, int size);
 dm_value dm_value_function(dm_state *dm, void *chunk, int nargs, bool takes_self);

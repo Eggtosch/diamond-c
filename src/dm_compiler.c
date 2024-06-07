@@ -500,7 +500,7 @@ static void ptablelit(dm_parser *parser) {
 static void pstring(dm_parser *parser) {
 	const char *s = parser->previous.begin + 1;
 	int len = parser->previous.len - 2;
-	dm_chunk_emit_constant(parser->dm, parser->chunk, dm_value_string_len(parser->dm, s, len));
+	dm_chunk_emit_constant(parser->dm, parser->chunk, dm_value_string_const(parser->dm, s, len));
 }
 
 static void pinteger(dm_parser *parser) {
@@ -573,7 +573,7 @@ static void pdot(dm_parser *parser) {
 	int len = parser->previous.len;
 	int index = dm_chunk_index_of_string_constant(parser->chunk, var, len);
 	if (index == -1) {
-		dm_chunk_emit_constant(parser->dm, parser->chunk, dm_value_string_len(parser->dm, var, len));
+		dm_chunk_emit_constant(parser->dm, parser->chunk, dm_value_string_const(parser->dm, var, len));
 	} else {
 		dm_chunk_emit_constant_i(parser->chunk, index);
 	}
