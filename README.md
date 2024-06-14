@@ -58,3 +58,10 @@ unop ::= '-' | 'not'
 
 primitives are nil, bool, int, float, string, array, table, function
 ```
+
+## future ideas and things to test
+
+- test register based vm
+- test fixed size opcodes
+- make opcodes for loops to use fewer instructions
+- ffi that automatically reads header files (and shared libraries?)
